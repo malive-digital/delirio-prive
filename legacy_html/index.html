@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê</title>
+    <meta name="description" content="Escolha seu interesse e acesse o catálogo premium do Delírio Privê." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="entry-page">
+    <div class="age-gate is-hidden" id="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-title">
+      <div class="age-gate__panel">
+        <p class="eyebrow">Conteúdo adulto</p>
+        <h2 id="age-title">Acesso restrito a maiores de 18 anos</h2>
+        <p>Ao continuar, você confirma ser maior de idade e concorda com os termos de uso e política de privacidade.</p>
+        <div class="age-gate__actions">
+          <button class="button button--primary" id="age-confirm" type="button">Tenho 18 anos ou mais</button>
+          <a class="button button--ghost" href="https://www.google.com.br">Sair</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="interest-modal is-hidden" id="interest-modal" role="dialog" aria-modal="true" aria-labelledby="interest-title">
+      <div class="interest-modal__panel">
+        <p class="eyebrow">Preferência de busca</p>
+        <h2 id="interest-title">Qual perfil você deseja explorar?</h2>
+        <p>Essa escolha define o catálogo principal da sua navegação.</p>
+        <div class="interest-options" role="group" aria-label="Escolha de interesse">
+          <button class="interest-option" type="button" data-interest="Mulheres" data-target="mulheres.html">
+            <span>Mulheres</span>
+          </button>
+          <button class="interest-option" type="button" data-interest="Homens" data-target="homens.html">
+            <span>Homens</span>
+          </button>
+          <button class="interest-option" type="button" data-interest="Trans" data-target="travestis.html">
+            <span>Trans</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <main class="entry-shell">
+      <a class="brand" href="index.html" aria-label="Delírio Privê">
+        <span class="brand__mark">DP</span>
+        <span>Delírio Privê</span>
+      </a>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

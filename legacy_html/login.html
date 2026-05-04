@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html"><span class="brand__mark">DP</span><span>Delírio Privê</span></a>
+      <nav class="app-nav" aria-label="Navegação">
+        <a href="index.html">Início</a><a href="favoritos.html">Favoritos</a><a href="cobranca.html">Planos</a><a class="login-link is-active" href="login.html">Entrar</a>
+      </nav>
+    </header>
+
+    <main class="app-page auth">
+      <div class="auth-visual"><img src="assets/hero-luxo.webp" alt="Interior sofisticado com luz baixa" /></div>
+      <form class="checkout-form auth-form">
+        <p class="eyebrow">Acesso seguro</p>
+        <h1>Login</h1>
+        <label class="input-group"><span>E-mail</span><input type="email" name="email" placeholder="voce@email.com" /></label>
+        <label class="input-group"><span>Senha</span><input type="password" name="password" placeholder="Sua senha" /></label>
+        <label class="check-row"><input type="checkbox" checked /><span>Lembrar sessão</span></label>
+        <button class="button button--primary" type="submit">Entrar com segurança</button>
+        <a class="subtle-link" href="login.html">Recuperar senha</a>
+      </form>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação mobile">
+      <a href="index.html">Explorar</a>
+      <a href="favoritos.html">Favoritos</a>
+      <a href="cobranca.html">Planos</a>
+      <a class="is-active" href="login.html">Conta</a>
+    </nav>
+    <script src="script.js"></script>
+  </body>
+</html>

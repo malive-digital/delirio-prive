@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê | Mulheres</title>
+    <meta name="description" content="Explore perfis premium com filtros, busca em tempo real e favoritos." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="age-gate is-hidden" id="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-title">
+      <div class="age-gate__panel">
+        <p class="eyebrow">Conteúdo adulto</p>
+        <h2 id="age-title">Acesso restrito a maiores de 18 anos</h2>
+        <p>Ao continuar, você confirma ser maior de idade e concorda com os termos de uso e política de privacidade.</p>
+        <div class="age-gate__actions">
+          <button class="button button--primary" id="age-confirm" type="button">Tenho 18 anos ou mais</button>
+          <a class="button button--ghost" href="https://www.google.com.br">Sair</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="interest-modal is-hidden" id="interest-modal" role="dialog" aria-modal="true" aria-labelledby="interest-title">
+      <div class="interest-modal__panel">
+        <p class="eyebrow">Preferência de busca</p>
+        <h2 id="interest-title">Qual perfil você deseja explorar?</h2>
+        <p>Essa escolha ajuda a organizar os resultados iniciais da plataforma.</p>
+        <div class="interest-options" role="group" aria-label="Escolha de interesse">
+          <button class="interest-option" type="button" data-interest="Mulheres" data-target="mulheres.html">
+            <span>Mulheres</span>
+          </button>
+          <button class="interest-option" type="button" data-interest="Homens" data-target="homens.html">
+            <span>Homens</span>
+          </button>
+          <button class="interest-option" type="button" data-interest="Trans" data-target="travestis.html">
+            <span>Trans</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <header class="app-header">
+      <a class="brand" href="index.html" aria-label="Delírio Privê">
+        <span class="brand__mark">DP</span>
+        <span>Delírio Privê</span>
+      </a>
+      <nav class="app-nav" aria-label="Navegação">
+        <a href="index.html">Início</a>
+        <a href="favoritos.html">Favoritos</a>
+        <a href="cobranca.html">Planos</a>
+        <a class="login-link" href="login.html">Entrar</a>
+      </nav>
+    </header>
+
+    <main class="app-page explore">
+      <div class="page-title">
+        <div>
+          <p class="eyebrow">Descoberta premium</p>
+          <h1>Mulheres</h1>
+          <p class="page-intro">Perfis femininos selecionados com curadoria visual, discrição e alto padrão.</p>
+        </div>
+        <nav class="category-switcher" aria-label="Trocar categoria">
+          <a class="is-active" href="mulheres.html">Mulheres</a>
+          <a href="homens.html">Homens</a>
+          <a href="travestis.html">Trans</a>
+        </nav>
+      </div>
+
+      <section class="catalog-status" aria-label="Preferências de navegação">
+        <div>
+          <span class="status-kicker">Localização</span>
+          <strong>São Paulo</strong>
+        </div>
+        <div>
+          <span class="status-kicker">Modo anônimo</span>
+          <strong>Ativado</strong>
+        </div>
+      </section>
+
+      <section class="catalog-shell catalog-shell--single">
+        <div class="catalog-main">
+          <section class="catalog-controls is-collapsed" id="catalog-controls" aria-label="Controles do catálogo">
+            <div class="catalog-controls__bar">
+              <label class="search-pill">
+                <span>Buscar perfil</span>
+                <input id="profile-search" type="search" placeholder="Nome, cidade, bairro ou categoria" />
+              </label>
+              <div class="filter-summary" aria-live="polite">
+                <span id="filter-summary-text">Todos os perfis</span>
+              </div>
+              <button
+                class="filter-toggle"
+                id="filter-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="filter-panel"
+              >
+                <span>Filtros</span>
+                <span class="filter-toggle__icon" aria-hidden="true"></span>
+              </button>
+              <button class="button button--ghost clear-filter-button js-clear-filters" type="button">Limpar filtros</button>
+            </div>
+
+            <div class="filter-panel" id="filter-panel">
+              <div class="filter-bar" role="group" aria-label="Filtros baseados no perfil feminino">
+                <label class="filter-field">
+                  <span>Estado</span>
+                  <select aria-label="Estado">
+                                        <option>Estado</option>
+                    <option>SP</option>
+                    <option>RJ</option>
+                    <option>PR</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Cidade</span>
+                  <select aria-label="Cidade">
+                                        <option>Cidade</option>
+                    <option>São Paulo</option>
+                    <option>Rio de Janeiro</option>
+                    <option>Curitiba</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Bairro</span>
+                  <select aria-label="Bairro">
+                                        <option>Bairro</option>
+                    <option>Jardins</option>
+                    <option>Leblon</option>
+                    <option>Batel</option>
+                    <option>Itaim Bibi</option>
+                    <option>Moema</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Viagem</span>
+                  <select aria-label="Disponibilidade para viagem">
+                                        <option>Viagem</option>
+                    <option>Disponível sob consulta</option>
+                    <option>Viagem</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Perfil</span>
+                  <select aria-label="Características do perfil">
+                                        <option>Perfil</option>
+                    <option>Feminino</option>
+                    <option>Silicone</option>
+                    <option>Tatuagens discretas</option>
+                    <option>Não fumante</option>
+                    <option>Português Inglês</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Serviço</span>
+                  <select aria-label="Serviço">
+                                        <option>Serviço</option>
+                    <option>Acompanhante</option>
+                    <option>Sexo virtual</option>
+                    <option>Acessórios eróticos</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Pagamento</span>
+                  <select aria-label="Pagamento">
+                                        <option>Pagamento</option>
+                    <option>Pix</option>
+                    <option>Dinheiro</option>
+                    <option>Cartão</option>
+                    <option>Transferência</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Ordenar por</span>
+                  <select id="sort-profiles" aria-label="Ordenar por">
+                    <option value="featured">Destaque</option>
+                    <option value="new">Top Privê</option>
+                    <option value="views">Mais vistas</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="quick-filter-row" role="group" aria-label="Filtros rápidos">
+                <button class="quick-chip is-active" type="button" data-filter="all">Todos</button>
+                <button class="quick-chip" type="button" data-filter="online">Online agora</button>
+                <button class="quick-chip" type="button" data-filter="premium">Premium</button>
+                <button class="quick-chip" type="button" data-filter="verificada">Verificadas</button>
+                <button class="quick-chip" type="button" data-filter="proxima">Próximas</button>
+                <button class="quick-chip" type="button" data-filter="viagem">Viagem</button>
+                <span class="result-count"><strong id="result-count">8</strong> perfis</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="stories-row" aria-label="Stories">
+            <a class="story-item is-online" href="perfil.html" data-online="true">
+              <span class="story-avatar story-avatar--one"><span class="story-online-badge"></span></span>
+              <strong>Valentina</strong>
+              <span class="sr-only">Online</span>
+            </a>
+            <a class="story-item is-online" href="perfil.html" data-online="true">
+              <span class="story-avatar story-avatar--two"><span class="story-online-badge"></span></span>
+              <strong>Isadora</strong>
+              <span class="sr-only">Online</span>
+            </a>
+            <a class="story-item" href="perfil.html" data-online="false">
+              <span class="story-avatar story-avatar--three"><span class="story-online-badge"></span></span>
+              <strong>Marcela</strong>
+            </a>
+            <a class="story-item is-online" href="perfil.html" data-online="true">
+              <span class="story-avatar story-avatar--four"><span class="story-online-badge"></span></span>
+              <strong>Laura</strong>
+              <span class="sr-only">Online</span>
+            </a>
+            <a class="story-item" href="perfil.html" data-online="false">
+              <span class="story-avatar story-avatar--two"><span class="story-online-badge"></span></span>
+              <strong>Sofia</strong>
+            </a>
+          </section>
+
+          <div class="catalog-section-title">
+            <h2>Top Privê</h2>
+            <span>Perfis com maior destaque</span>
+          </div>
+
+          <section class="profile-grid profile-grid--top" aria-label="Top Privê">
+            <article class="profile-card profile-card--top" data-search="valentina sao paulo jardins luxo premium proxima sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="jardins luxo premium proxima sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="95" data-new="82" data-views="12400">
+              <a class="profile-card__media profile-card__media--one" href="perfil.html" aria-label="Ver perfil de Camila">
+                <span class="tag tag--premium">Top Privê</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Valentina</h2>
+                <p>25 anos · Jardins · São Paulo</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+            <article class="profile-card profile-card--top" data-search="isadora rio de janeiro leblon executiva destaque premium online verificada rj feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="executiva premium online verificada rj feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="99" data-new="76" data-views="12800">
+              <a class="profile-card__media profile-card__media--two" href="perfil.html">
+                <span class="tag tag--premium">Top Privê</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Isadora</h2>
+                <p>27 anos · Leblon · Rio de Janeiro</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <div class="catalog-section-title catalog-section-title--spaced">
+            <h2>Premium</h2>
+            <span>Fotos em destaque compacto</span>
+          </div>
+
+          <section class="profile-grid profile-grid--premium" aria-label="Premium">
+            <article class="profile-card profile-card--premium" data-search="marcela curitiba batel viagem premium verificada pr feminino disponivel sob consulta silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="batel viagem premium verificada pr feminino disponivel sob consulta silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="86" data-new="94" data-views="9800">
+              <a class="profile-card__media profile-card__media--three" href="perfil.html" aria-label="Ver perfil de Helena">
+                <span class="tag tag--premium">Premium</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Marcela</h2>
+                <p>29 anos · Batel · Curitiba</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+            <article class="profile-card profile-card--premium" data-search="laura sao paulo itaim luxo online premium proxima sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="itaim luxo online premium proxima sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="91" data-new="88" data-views="11600">
+              <a class="profile-card__media profile-card__media--four" href="perfil.html" aria-label="Ver perfil de Bianca">
+                <span class="tag tag--premium">Premium</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Laura</h2>
+                <p>26 anos · Itaim Bibi · São Paulo</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+            <article class="profile-card profile-card--premium" data-search="sofia sao paulo moema executiva premium verificada sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="moema executiva premium verificada proxima sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="84" data-new="91" data-views="7600">
+              <a class="profile-card__media profile-card__media--two" href="perfil.html">
+                <span class="tag tag--premium">Premium</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Sofia</h2>
+                <p>28 anos · Moema · São Paulo</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="profile-grid profile-grid--basic" aria-label="Básico">
+            <article class="profile-card profile-card--basic" data-search="camila sao paulo jardins viagem luxo basico sp feminino disponivel sob consulta silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="jardins viagem luxo basico sp feminino disponivel sob consulta silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="89" data-new="73" data-views="8900">
+              <a class="profile-card__media profile-card__media--one" href="perfil.html">
+                <span class="sr-only">Ver perfil de Camila</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Camila</h2>
+                <p>30 anos · Jardins · São Paulo</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+            <article class="profile-card profile-card--basic" data-search="helena curitiba batel luxo online basico pr feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="batel luxo online basico verificada pr feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="82" data-new="86" data-views="6900">
+              <a class="profile-card__media profile-card__media--three" href="perfil.html">
+                <span class="sr-only">Ver perfil de Helena</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Helena</h2>
+                <p>26 anos · Batel · Curitiba</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+            <article class="profile-card profile-card--basic" data-search="bianca sao paulo itaim executiva basico online sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-tags="itaim executiva basico online sp feminino disponivel sob consulta viagem silicone tatuagens discretas nao fumante portugues ingles acompanhante sexo virtual acessorios eroticos pix dinheiro cartao transferencia" data-featured="87" data-new="79" data-views="10300">
+              <a class="profile-card__media profile-card__media--four" href="perfil.html">
+                <span class="sr-only">Ver perfil de Bianca</span>
+              </a>
+
+              <div class="profile-card__body">
+                <h2>Bianca</h2>
+                <p>31 anos · Itaim Bibi · São Paulo</p>
+                <div class="card-actions">
+                  <a href="perfil.html">Ver perfil</a>
+                  <a href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </article>
+          </section>
+          <div class="empty-state" id="empty-state" hidden>
+            <h2>Nenhum perfil encontrado</h2>
+            <p>Ajuste os filtros ou faça uma nova busca para encontrar perfis disponíveis.</p>
+            <button class="button button--ghost js-clear-filters" type="button">Limpar filtros</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação mobile">
+        <a href="favoritos.html">Favoritos</a>
+              <a href="cobranca.html">Planos</a>
+      <a href="login.html">Conta</a>
+    </nav>
+
+    <script src="script.js"></script>
+  </body>
+</html>

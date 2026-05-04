@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html"><span class="brand__mark">DP</span><span>Delírio Privê</span></a>
+      <nav class="app-nav" aria-label="Navegação">
+        <a href="index.html">Início</a><a href="favoritos.html">Favoritos</a><a href="cobranca.html">Planos</a><a class="login-link" href="login.html">Entrar</a>
+      </nav>
+    </header>
+
+    <main class="app-page dashboard">
+      <div class="page-title">
+        <div>
+          <p class="eyebrow">Área de membro</p>
+          <h1>Dashboard acompanhante</h1>
+        </div>
+        <a class="button button--primary" href="cobranca.html">Upgrade de plano</a>
+      </div>
+
+      <section class="dashboard-grid" aria-label="Resumo de performance">
+        <article class="metric-card">
+          <span>Visualizações</span>
+          <strong>12.842</strong>
+          <div class="mini-chart"><span style="height: 45%"></span><span style="height: 72%"></span><span style="height: 58%"></span><span style="height: 86%"></span></div>
+        </article>
+        <article class="metric-card">
+          <span>Contatos</span>
+          <strong>318</strong>
+          <div class="mini-chart"><span style="height: 38%"></span><span style="height: 52%"></span><span style="height: 76%"></span><span style="height: 68%"></span></div>
+        </article>
+        <article class="metric-card metric-card--accent">
+          <span>Status do plano</span>
+          <strong>Top Privê</strong>
+          <a class="button button--primary" href="cobranca.html">Ativar destaque</a>
+        </article>
+
+        <article class="dashboard-panel">
+          <h2>Gestão rápida</h2>
+          <div class="management-list">
+            <button type="button" data-dashboard-target="profile-editor-panel">Editar perfil</button>
+            <button type="button" data-dashboard-target="media-manager-panel">Gerenciar fotos e vídeos</button>
+            <a href="historico-pagamentos.html">Histórico de pagamentos</a>
+            <button type="button">Notificações</button>
+            <button type="button">Status ativo/inativo</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="dashboard-panel profile-editor-panel dashboard-workspace-panel" id="profile-editor-panel" aria-labelledby="profile-editor-title" hidden>
+        <p class="eyebrow">Editar perfil</p>
+        <h2 id="profile-editor-title">Cadastro de informações</h2>
+        <form class="model-profile-form profile-editor-form">
+          <div class="model-form-grid model-form-grid--compact">
+            <label class="input-group"><span>Tipo de perfil</span><select id="model-type" name="profile_type"><option value="mulher">Mulher</option><option value="homem">Homem</option><option value="trans">Trans</option></select></label>
+            <label class="input-group"><span>E-mail de contato</span><input type="email" name="contact_email" placeholder="contato@email.com" /></label>
+            <label class="input-group"><span>WhatsApp</span><input type="tel" name="whatsapp" placeholder="(11) 99999-9999" /></label>
+          </div>
+
+          <fieldset class="model-fields" data-profile-type="mulher">
+            <legend>Perfil feminino</legend>
+            <div class="model-form-grid">
+              <label class="input-group"><span>Nome artístico</span><input type="text" name="female_name" placeholder="Ex.: Isadora Monteiro" /></label>
+              <label class="input-group"><span>Localização</span><input type="text" name="female_location" placeholder="Bairro, cidade e estado" /></label>
+              <label class="input-group"><span>Disponibilidade para viagem</span><select name="female_travel"><option>Disponível sob consulta</option><option>Disponível</option><option>Não disponível</option></select></label>
+              <label class="input-group"><span>Expediente</span><input type="text" name="female_hours" placeholder="Seg a sáb, 14h às 23h" /></label>
+              <label class="input-group"><span>Gênero</span><input type="text" name="female_gender" value="Feminino" /></label>
+              <label class="input-group"><span>Preferência sexual</span><input type="text" name="female_preference" placeholder="Homens, mulheres, casais" /></label>
+              <label class="input-group"><span>Peso</span><input type="text" name="female_weight" placeholder="58 kg" /></label>
+              <label class="input-group"><span>Altura</span><input type="text" name="female_height" placeholder="1,68 m" /></label>
+              <label class="input-group"><span>Etnia</span><input type="text" name="female_ethnicity" placeholder="Branca, parda..." /></label>
+              <label class="input-group"><span>Olhos</span><input type="text" name="female_eyes" placeholder="Castanhos" /></label>
+              <label class="input-group"><span>Cabelo</span><input type="text" name="female_hair" placeholder="Castanho longo" /></label>
+              <label class="input-group"><span>Tamanho do pé</span><input type="text" name="female_foot" placeholder="36" /></label>
+              <label class="input-group"><span>Silicone</span><select name="female_silicone"><option>Sim</option><option>Não</option></select></label>
+              <label class="input-group"><span>Tatuagens</span><input type="text" name="female_tattoos" placeholder="Discretas, sim, não" /></label>
+              <label class="input-group"><span>Piercings</span><input type="text" name="female_piercings" placeholder="Sim ou não" /></label>
+              <label class="input-group"><span>Fumante</span><select name="female_smoker"><option>Não</option><option>Sim</option></select></label>
+              <label class="input-group"><span>Idiomas</span><input type="text" name="female_languages" placeholder="Português, Inglês" /></label>
+              <fieldset class="choice-field input-group--wide"><legend>Serviços prestados</legend><div class="choice-grid"><label><input type="checkbox" name="female_services_sexo_vaginal" value="sexo_vaginal_com_preservativo" data-group="female_services" /> Sexo vaginal com preservativo</label><label><input type="checkbox" name="female_services_sexo_oral" value="sexo_oral_com_preservativo" data-group="female_services" /> Sexo oral com preservativo</label><label><input type="checkbox" name="female_services_masturbacao" value="masturbacao" data-group="female_services" /> Masturbação</label><label><input type="checkbox" name="female_services_sexo_virtual" value="sexo_virtual" data-group="female_services" /> Sexo virtual</label><label><input type="checkbox" name="female_services_acessorios" value="acessorios_eroticos" data-group="female_services" /> Acessórios eróticos</label><label><input type="checkbox" name="female_services_chuva" value="chuva_dourada" data-group="female_services" /> Chuva dourada</label><label><input type="checkbox" name="female_services_acompanhante" value="acompanhante" data-group="female_services" /> Acompanhante</label></div></fieldset>
+              <fieldset class="choice-field input-group--wide"><legend>Formas de pagamento aceitas</legend><div class="choice-grid choice-grid--compact"><label><input type="checkbox" name="female_payment_dinheiro" value="dinheiro" data-group="female_payment" /> Dinheiro</label><label><input type="checkbox" name="female_payment_pix" value="pix" data-group="female_payment" /> Pix</label><label><input type="checkbox" name="female_payment_cartao" value="cartao" data-group="female_payment" /> Cartão</label><label><input type="checkbox" name="female_payment_transferencia" value="transferencia" data-group="female_payment" /> Transferência</label></div></fieldset>
+              <label class="input-group input-group--wide"><span>Descrição</span><textarea name="female_description" placeholder="Texto elegante com apresentação do atendimento"></textarea></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="model-fields" data-profile-type="homem" hidden>
+            <legend>Perfil masculino</legend>
+            <div class="model-form-grid">
+              <label class="input-group"><span>Nome artístico</span><input type="text" name="male_name" placeholder="Ex.: Rafael Prado" /></label>
+              <label class="input-group"><span>Localização</span><input type="text" name="male_location" placeholder="Bairro, cidade e estado" /></label>
+              <label class="input-group"><span>Disponibilidade para viagem</span><select name="male_travel"><option>Disponível</option><option>Disponível sob consulta</option><option>Não disponível</option></select></label>
+              <label class="input-group"><span>Expediente</span><input type="text" name="male_hours" placeholder="Todos os dias, 12h às 23h" /></label>
+              <label class="input-group"><span>Gênero</span><input type="text" name="male_gender" value="Masculino" /></label>
+              <label class="input-group"><span>Preferência</span><input type="text" name="male_preference" placeholder="Mulheres, homens, casais" /></label>
+              <label class="input-group"><span>Peso</span><input type="text" name="male_weight" placeholder="82 kg" /></label>
+              <label class="input-group"><span>Altura</span><input type="text" name="male_height" placeholder="1,84 m" /></label>
+              <label class="input-group"><span>Porte físico</span><input type="text" name="male_build" placeholder="Atlético" /></label>
+              <label class="input-group"><span>Etnia</span><input type="text" name="male_ethnicity" placeholder="Branco, pardo..." /></label>
+              <label class="input-group"><span>Olhos</span><input type="text" name="male_eyes" placeholder="Castanhos" /></label>
+              <label class="input-group"><span>Cabelo</span><input type="text" name="male_hair" placeholder="Castanho curto" /></label>
+              <label class="input-group"><span>Barba</span><input type="text" name="male_beard" placeholder="Curta, sem barba..." /></label>
+              <label class="input-group"><span>Tatuagens</span><input type="text" name="male_tattoos" placeholder="Sim ou não" /></label>
+              <label class="input-group"><span>Piercings</span><input type="text" name="male_piercings" placeholder="Sim ou não" /></label>
+              <label class="input-group"><span>Fumante</span><select name="male_smoker"><option>Não</option><option>Sim</option></select></label>
+              <label class="input-group"><span>Idiomas</span><input type="text" name="male_languages" placeholder="Português, Inglês" /></label>
+              <fieldset class="choice-field input-group--wide"><legend>Serviços prestados</legend><div class="choice-grid"><label><input type="checkbox" name="male_services_acompanhante" value="acompanhante" data-group="male_services" /> Acompanhante</label><label><input type="checkbox" name="male_services_eventos" value="eventos" data-group="male_services" /> Eventos</label><label><input type="checkbox" name="male_services_viagens" value="viagens" data-group="male_services" /> Viagens</label><label><input type="checkbox" name="male_services_massagem" value="massagem" data-group="male_services" /> Massagem</label><label><input type="checkbox" name="male_services_companhia" value="companhia" data-group="male_services" /> Companhia</label><label><input type="checkbox" name="male_services_virtual" value="virtual" data-group="male_services" /> Virtual</label></div></fieldset>
+              <fieldset class="choice-field input-group--wide"><legend>Formas de pagamento aceitas</legend><div class="choice-grid choice-grid--compact"><label><input type="checkbox" name="male_payment_pix" value="pix" data-group="male_payment" /> Pix</label><label><input type="checkbox" name="male_payment_dinheiro" value="dinheiro" data-group="male_payment" /> Dinheiro</label><label><input type="checkbox" name="male_payment_cartao" value="cartao" data-group="male_payment" /> Cartão</label></div></fieldset>
+              <label class="input-group input-group--wide"><span>Descrição</span><textarea name="male_description" placeholder="Texto direto, objetivo e profissional"></textarea></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="model-fields" data-profile-type="trans" hidden>
+            <legend>Perfil trans</legend>
+            <div class="model-form-grid">
+              <label class="input-group"><span>Nome artístico</span><input type="text" name="trans_name" placeholder="Ex.: Luna Valença" /></label>
+              <label class="input-group"><span>Identidade de gênero</span><input type="text" name="trans_identity" value="Trans" /></label>
+              <label class="input-group"><span>Localização</span><input type="text" name="trans_location" placeholder="Bairro, cidade e estado" /></label>
+              <label class="input-group"><span>Disponibilidade para viagem</span><select name="trans_travel"><option>Disponível sob consulta</option><option>Disponível</option><option>Não disponível</option></select></label>
+              <label class="input-group"><span>Expediente</span><input type="text" name="trans_hours" placeholder="Ter a dom, 15h às 00h" /></label>
+              <label class="input-group"><span>Gênero</span><input type="text" name="trans_gender" placeholder="Feminino" /></label>
+              <label class="input-group"><span>Preferência</span><input type="text" name="trans_preference" placeholder="Homens, mulheres, casais" /></label>
+              <label class="input-group"><span>Peso</span><input type="text" name="trans_weight" placeholder="62 kg" /></label>
+              <label class="input-group"><span>Altura</span><input type="text" name="trans_height" placeholder="1,72 m" /></label>
+              <label class="input-group"><span>Etnia</span><input type="text" name="trans_ethnicity" placeholder="Parda, branca..." /></label>
+              <label class="input-group"><span>Olhos</span><input type="text" name="trans_eyes" placeholder="Mel" /></label>
+              <label class="input-group"><span>Cabelo</span><input type="text" name="trans_hair" placeholder="Preto longo" /></label>
+              <label class="input-group"><span>Corpo</span><input type="text" name="trans_body" placeholder="Curvilíneo" /></label>
+              <label class="input-group"><span>Silicone</span><select name="trans_silicone"><option>Sim</option><option>Não</option></select></label>
+              <label class="input-group"><span>Tatuagens</span><input type="text" name="trans_tattoos" placeholder="Discretas, sim, não" /></label>
+              <label class="input-group"><span>Piercings</span><input type="text" name="trans_piercings" placeholder="Sim ou não" /></label>
+              <label class="input-group"><span>Fumante</span><select name="trans_smoker"><option>Não</option><option>Sim</option></select></label>
+              <label class="input-group"><span>Idiomas</span><input type="text" name="trans_languages" placeholder="Português, Espanhol" /></label>
+              <label class="input-group"><span>Operada</span><select name="trans_operated"><option>Não informado</option><option>Sim</option><option>Não</option></select></label>
+              <label class="input-group"><span>Tipo de corpo</span><input type="text" name="trans_body_type" placeholder="Feminino curvilíneo" /></label>
+              <fieldset class="choice-field input-group--wide"><legend>Serviços prestados</legend><div class="choice-grid"><label><input type="checkbox" name="trans_services_acompanhante" value="acompanhante" data-group="trans_services" /> Acompanhante</label><label><input type="checkbox" name="trans_services_eventos" value="eventos" data-group="trans_services" /> Eventos</label><label><input type="checkbox" name="trans_services_viagens" value="viagens" data-group="trans_services" /> Viagens</label><label><input type="checkbox" name="trans_services_virtual" value="virtual" data-group="trans_services" /> Virtual</label><label><input type="checkbox" name="trans_services_experiencias" value="experiencias_personalizadas" data-group="trans_services" /> Experiências personalizadas</label></div></fieldset>
+              <fieldset class="choice-field input-group--wide"><legend>Formas de pagamento aceitas</legend><div class="choice-grid choice-grid--compact"><label><input type="checkbox" name="trans_payment_pix" value="pix" data-group="trans_payment" /> Pix</label><label><input type="checkbox" name="trans_payment_dinheiro" value="dinheiro" data-group="trans_payment" /> Dinheiro</label><label><input type="checkbox" name="trans_payment_cartao" value="cartao" data-group="trans_payment" /> Cartão</label></div></fieldset>
+              <label class="input-group input-group--wide"><span>Observações</span><input type="text" name="trans_notes" placeholder="Campo opcional para transparência" /></label>
+              <label class="input-group input-group--wide"><span>Descrição</span><textarea name="trans_description" placeholder="Texto personalizado, elegante e descritivo"></textarea></label>
+            </div>
+          </fieldset>
+
+          <button class="button button--primary profile-editor-submit" type="submit">Salvar informações</button>
+        </form>
+      </section>
+
+      <section class="dashboard-panel dashboard-workspace-panel media-manager-panel" id="media-manager-panel" aria-labelledby="media-manager-title" hidden>
+        <p class="eyebrow">Gerenciar fotos e vídeos</p>
+        <h2 id="media-manager-title">Upload para aprovação</h2>
+        <form class="media-upload-form">
+          <label class="upload-dropzone">
+            <span>Enviar fotos ou vídeos curtos</span>
+            <input type="file" name="profile_media" accept="image/*,video/*" multiple />
+          </label>
+          <button class="button button--primary media-upload-submit" type="submit">Enviar para aprovação</button>
+        </form>
+        <ul class="approval-list">
+          <li><strong>profile-hero.webp</strong><span class="approval-status approval-status--approved">Aprovada</span></li>
+          <li><strong>novo-video.mp4</strong><span class="approval-status approval-status--pending">Aguardando aprovação</span></li>
+          <li><strong>ensaio-03.webp</strong><span class="approval-status approval-status--review">Em análise pelo administrador</span></li>
+        </ul>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

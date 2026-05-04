@@ -1,0 +1,21 @@
+{
+  "name": "delirio-prive",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "check:js": "node --check script.js",
+    "check:html": "html-validate \"*.html\"",
+    "check:css": "stylelint \"styles.css\"",
+    "check": "npm run check:js && npm run check:html && npm run check:css"
+  },
+  "devDependencies": {
+    "html-validate": "^9.7.1",
+    "sharp": "^0.33.5",
+    "stylelint": "^16.10.0",
+    "stylelint-config-standard": "^36.0.1",
+    "vite": "^8.0.10"
+  }
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê | Planos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html"><span class="brand__mark">DP</span><span>Delírio Privê</span></a>
+      <nav class="app-nav" aria-label="Navegação">
+        <a href="index.html">Início</a><a href="favoritos.html">Favoritos</a><a class="is-active" href="cobranca.html">Planos</a><a class="login-link" href="login.html">Entrar</a>
+      </nav>
+    </header>
+    <main class="app-page">
+      <div class="page-title"><div><p class="eyebrow">Monetização</p><h1>Planos de destaque</h1></div><p>Escolha como seu perfil aparece na plataforma.</p></div>
+      <section class="pricing-grid" aria-label="Planos disponíveis">
+        <article class="plan" data-plan="Básico"><div class="plan__head"><h2>Básico</h2><p>Gratuito</p></div><ul><li>Perfil listado</li><li>Baixa visibilidade</li></ul><button class="button button--muted plan__button" type="button">Manter básico</button></article>
+        <article class="plan" data-plan="Premium"><div class="plan__head"><h2>Premium</h2><p>Mensal</p></div><ul><li>Perfil em destaque</li><li>Mais visualizações</li><li>Prioridade na busca</li></ul><button class="button button--muted plan__button" type="button">Selecionar Premium</button></article>
+        <article class="plan plan--featured is-selected" data-plan="Top Privê"><div class="plan__badge">Mais escolhido</div><div class="plan__head"><h2>Top Privê</h2><p>Mensal premium</p></div><ul><li>Topo fixo</li><li>Máxima exposição</li><li>Selo exclusivo</li><li>Alta conversão</li></ul><button class="button button--primary plan__button" type="button">Selecionar Top Privê</button></article>
+      </section>
+      <section class="checkout checkout--page" id="checkout" aria-labelledby="checkout-title">
+        <div class="checkout__summary"><p class="eyebrow">Checkout</p><h2 id="checkout-title">Ative seu destaque</h2><p>Plano selecionado: <strong id="selected-plan">Top Privê</strong></p><div class="privacy-row"><span>PIX</span><span>Cartão de crédito</span><span>Modo anônimo</span><span>Algoritmo de destaque</span></div></div>
+        <form class="checkout-form"><fieldset><legend>Método de pagamento</legend><div class="payment-toggle" role="radiogroup" aria-label="Método de pagamento"><label><input type="radio" name="payment" value="PIX" checked /><span>PIX</span></label><label><input type="radio" name="payment" value="Cartão de crédito" /><span>Cartão</span></label></div></fieldset><label class="input-group"><span>Nome de exibição</span><input type="text" name="displayName" placeholder="Seu nome profissional" /></label><label class="input-group"><span>WhatsApp de contato</span><input type="tel" name="phone" placeholder="(00) 00000-0000" /></label><button class="button button--primary checkout-form__submit" type="submit">Ativar destaque agora</button></form>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

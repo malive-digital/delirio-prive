@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delírio Privê | Histórico de Pagamentos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html"><span class="brand__mark">DP</span><span>Delírio Privê</span></a>
+      <nav class="app-nav" aria-label="Navegação">
+        <a href="index.html">Início</a><a href="dashboard.html">Dashboard</a><a href="cobranca.html">Planos</a><a class="login-link" href="login.html">Entrar</a>
+      </nav>
+    </header>
+    <main class="app-page">
+      <div class="page-title">
+        <div>
+          <p class="eyebrow">Financeiro</p>
+          <h1>Histórico de pagamentos</h1>
+        </div>
+        <a class="button button--ghost" href="dashboard.html">Voltar ao dashboard</a>
+      </div>
+      <section class="dashboard-panel payment-history-panel" aria-label="Histórico de pagamentos">
+        <div class="payment-history-row payment-history-row--head"><span>Data</span><span>Plano</span><span>Método</span><span>Status</span><span>Valor</span></div>
+        <div class="payment-history-row"><span>30/04/2026</span><span>Top Privê</span><span>Pix</span><strong class="payment-status payment-status--paid">Pago</strong><span>R$ 299,00</span></div>
+        <div class="payment-history-row"><span>30/03/2026</span><span>Premium</span><span>Cartão</span><strong class="payment-status payment-status--paid">Pago</strong><span>R$ 179,00</span></div>
+        <div class="payment-history-row"><span>28/02/2026</span><span>Básico</span><span>Gratuito</span><strong class="payment-status payment-status--free">Sem cobrança</strong><span>R$ 0,00</span></div>
+      </section>
+    </main>
+  </body>
+</html>
