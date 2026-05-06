@@ -48,7 +48,7 @@ export default function Page() {
                 <input id="profile-search" type="search" placeholder="Nome, cidade, bairro ou categoria" />
               </label>
               <div className="filter-summary" aria-live="polite">
-                <span id="filter-summary-text">Todos os perfis</span>
+                <span id="filter-summary-text">Todos os perfis · 8 perfis</span>
               </div>
               <button
                 className="filter-toggle"
@@ -60,7 +60,7 @@ export default function Page() {
                 <span>Filtros</span>
                 <span className="filter-toggle__icon" aria-hidden="true"></span>
               </button>
-              <button className="button button--ghost clear-filter-button js-clear-filters" type="button">Limpar filtros</button>
+              <button className="button button--ghost clear-filter-button js-clear-filters" type="button" data-filter-reset="catalog">Limpar filtros</button>
             </div>
 
             <div className="filter-panel" id="filter-panel">

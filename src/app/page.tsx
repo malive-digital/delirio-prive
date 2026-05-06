@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -66,8 +67,12 @@ export default function Home() {
                 <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.55 }}>
                   O Delírio Privê não solicita prints de conversas, vídeos de clientes, códigos, senhas ou pagamentos para
                   terceiros. Desconfie de perfis, agenciadores ou supostos representantes usando o nome do site. Antes de
-                  qualquer pagamento, confirme diretamente com a administração oficial.
+                  qualquer pagamento, confirme diretamente com a administração oficial. Não respondemos intermediários,
+                  agenciadores ou terceiros.
                 </p>
+                <Link href="/cadastro-whatsapp" style={{ display: "inline-flex", marginTop: "0.65rem", color: "var(--gold-primary)", fontSize: "0.85rem", fontWeight: 800, textDecoration: "underline" }}>
+                  Ver alertas e política de anúncios
+                </Link>
               </div>
             </div>
             <div className="age-gate__actions">

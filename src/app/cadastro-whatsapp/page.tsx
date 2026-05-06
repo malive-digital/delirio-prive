@@ -1,23 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
+const adminWhatsapp = "5511999999999";
+const displayWhatsapp = "(11) 99999-9999";
 
 export default function CadastroWhatsapp() {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-
-  useEffect(() => {
-    // If we wanted to pass the plan via URL, we could read searchParams here.
-    // For now, it's a generic high-conversion page.
-  }, []);
-
-  const adminWhatsapp = "5511999999999"; // Substituir pelo número real
-  const message = encodeURIComponent("Olá, equipe Delírio Privê! Gostaria de criar/destacar meu perfil na plataforma. Como procedo com a verificação de idade?");
+  const message = encodeURIComponent(
+    "Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil na plataforma. Podem me orientar pelo atendimento oficial?",
+  );
   const waLink = `https://wa.me/${adminWhatsapp}?text=${message}`;
 
   return (
-    <div className="entry-page" style={{ overflow: "hidden" }}>
-      <header className="app-header" style={{ position: "absolute", top: 0, width: "100%", background: "transparent", border: "none" }}>
+    <div className="entry-page cadastro-page">
+      <header className="app-header">
         <Link className="brand" href="/">
           <span className="brand__mark">DP</span>
           <span>Delírio Privê</span>
@@ -25,107 +21,103 @@ export default function CadastroWhatsapp() {
         <nav className="app-nav" aria-label="Navegação">
           <Link href="/">Início</Link>
           <Link href="/planos">Planos</Link>
+          <Link href="/login">Entrar</Link>
         </nav>
       </header>
 
-      <main 
-        className="app-page auth" 
-        style={{ 
-          minHeight: "100vh", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center",
-          background: `radial-gradient(circle at center, rgba(212, 175, 55, 0.08) 0%, transparent 60%), linear-gradient(to bottom, #050505, #111)`
-        }}
-      >
-        <div 
-          style={{
-            width: "100%",
-            maxWidth: "500px",
-            padding: "3rem",
-            borderRadius: "1.5rem",
-            background: "rgba(18, 18, 18, 0.7)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(212, 175, 55, 0.2)",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-            textAlign: "center"
-          }}
-        >
-          <div style={{ marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-            <div style={{ 
-              width: "60px", 
-              height: "60px", 
-              background: "linear-gradient(135deg, var(--gold-secondary), var(--gold-primary))", 
-              borderRadius: "50%", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              marginBottom: "1.5rem",
-              color: "#111",
-              boxShadow: "0 0 30px rgba(212, 175, 55, 0.3)"
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </div>
-            <p className="eyebrow" style={{ color: "var(--gold-primary)", fontSize: "0.85rem", letterSpacing: "1px", textTransform: "uppercase", margin: "0 0 0.5rem 0" }}>Ambiente Seguro e Restrito</p>
-            <h1 style={{ fontSize: "2.4rem", margin: "0 0 1rem 0", lineHeight: "1.1", whiteSpace: "nowrap" }}>Cadastro Humanizado</h1>
-            
-            <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem", lineHeight: "1.6", maxWidth: "90%" }}>
-              Para garantir a segurança, exclusividade e integridade da nossa plataforma, a aprovação de novos perfis é feita de forma <strong>100% manual e sigilosa</strong>.
+      <main className="cadastro-shell">
+        <section className="cadastro-hero" aria-labelledby="cadastro-title">
+          <div className="cadastro-hero__copy">
+            <p className="eyebrow">Atendimento oficial</p>
+            <h1 id="cadastro-title">Cadastro com verificação humana</h1>
+            <p>
+              O Delírio Privê divulga perfis independentes. Não somos agência, boate, flat, casa de atendimento,
+              intermediador ou representante das anunciantes.
             </p>
+            <div className="cadastro-actions">
+              <a className="button button--primary" href={waLink} target="_blank" rel="noreferrer">
+                Falar pelo WhatsApp oficial
+              </a>
+              <Link className="button button--ghost" href="/planos">
+                Ver planos
+              </Link>
+            </div>
+            <p className="cadastro-note">Canal oficial para anúncios: {displayWhatsapp}</p>
           </div>
-          
-          <div style={{ 
-            background: "rgba(10, 10, 10, 0.5)", 
-            border: "1px solid rgba(245, 230, 200, 0.1)", 
-            borderRadius: "1rem", 
-            padding: "1.5rem",
-            marginBottom: "2rem",
-            textAlign: "center"
-          }}>
-            <h3 style={{ color: "white", marginBottom: "1rem", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-              <span style={{ color: "var(--gold-primary)" }}>▶</span> Como funciona?
-            </h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }}>
-              <li style={{ color: "var(--text-secondary)", maxWidth: "90%" }}>
-                <strong style={{ color: "var(--gold-primary)" }}>1.</strong> Você será redirecionado para o nosso WhatsApp oficial.
-              </li>
-              <li style={{ color: "var(--text-secondary)", maxWidth: "90%" }}>
-                <strong style={{ color: "var(--gold-primary)" }}>2.</strong> Solicitaremos um documento com foto apenas para <strong>comprovação de maioridade (+18)</strong>.
-              </li>
-              <li style={{ color: "var(--text-secondary)", maxWidth: "90%" }}>
-                <strong style={{ color: "var(--gold-primary)" }}>3.</strong> Após a verificação, ativamos seu plano e perfil na hora.
-              </li>
-            </ul>
+
+          <aside className="cadastro-card" aria-label="Como funciona">
+            <h2>Como funciona</h2>
+            <ol>
+              <li>Você fala diretamente com a administração oficial do Delírio Privê.</li>
+              <li>Confirmamos maioridade e avaliamos o material do perfil com sigilo.</li>
+              <li>Após aprovação e pagamento confirmado, o anúncio é publicado em até 24 horas.</li>
+            </ol>
+          </aside>
+        </section>
+
+        <section className="safety-section" aria-labelledby="safety-title">
+          <div className="section__header">
+            <p className="eyebrow">Segurança</p>
+            <h2 id="safety-title">Alertas importantes contra golpes</h2>
+            <p>Use apenas os canais oficiais e desconfie de qualquer abordagem fora desse fluxo.</p>
           </div>
-          
-          <a 
-            href={waLink}
-            target="_blank"
-            rel="noreferrer"
-            className="button button--primary" 
-            style={{ 
-              width: "100%", 
-              padding: "1.2rem", 
-              fontSize: "1.2rem", 
-              borderRadius: "0.8rem", 
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem"
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
-            </svg>
-            Falar com Atendimento
-          </a>
-          <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.4)" }}>
-            Apenas para criação de perfis. Não respondemos clientes.
-          </p>
-        </div>
+
+          <div className="safety-grid">
+            {[
+              "Não respondemos intermediários, agenciadores ou terceiros falando em nome de anunciantes.",
+              "Não caia em golpes de agenciadores que usem o nome do Delírio Privê para cobrar taxas ou prometer destaque.",
+              "Não solicitamos prints de conversas, vídeos de clientes, senhas, códigos ou dados privados de terceiros.",
+              "Cuidado com golpes de flats, book VIP, denúncias falsas de perfil e cobranças feitas somente por boleto.",
+              "Não efetue pagamentos sem confirmar diretamente com a administração oficial a disponibilidade do anúncio.",
+              "Não damos informações sobre perfis, pagamentos ou cadastros para terceiros.",
+            ].map((item) => (
+              <article className="safety-item" key={item}>
+                {item}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="policy-section" aria-labelledby="policy-title">
+          <div className="section__header">
+            <p className="eyebrow">Política de anúncios</p>
+            <h2 id="policy-title">Diretrizes para publicação</h2>
+          </div>
+
+          <div className="policy-list">
+            <article>
+              <h3>Material aprovado</h3>
+              <p>
+                Para anunciar, é necessário ter mais de 18 anos e enviar material fotográfico próprio, nítido e autorizado.
+                Ensaios com baixa resolução, aparência excessivamente caseira ou já publicados em portais muito populares
+                podem ser recusados.
+              </p>
+            </article>
+            <article>
+              <h3>Conteúdo não aceito</h3>
+              <p>
+                Não publicamos imagens com terceiros identificáveis, símbolos oficiais, temas religiosos, ambientes
+                políticos, militares ou sagrados, nem fotos que prejudiquem a segurança, privacidade ou reputação da
+                plataforma.
+              </p>
+            </article>
+            <article>
+              <h3>Quantidade de mídia</h3>
+              <p>
+                Os limites seguem o plano contratado: Básico com 5 fotos, Premium com 10 fotos e 1 vídeo, Top Privê com
+                15 fotos e 2 vídeos.
+              </p>
+            </article>
+            <article>
+              <h3>Pagamento e renovação</h3>
+              <p>
+                O pagamento é feito pelos meios informados pela administração oficial. Após a publicação do anúncio, os
+                valores não são reembolsáveis. O Delírio Privê pode não publicar ou não renovar anúncios que prejudiquem a
+                integridade do site.
+              </p>
+            </article>
+          </div>
+        </section>
       </main>
     </div>
   );

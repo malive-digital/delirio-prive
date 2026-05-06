@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const TRIAL_DAYS = 7;
+
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -22,126 +24,214 @@ export default function Login() {
       password,
     });
 
-    if (signInError) {
-      setError("E-mail ou senha inválidos.");
+    if (signInError || !data.user) {
+      setError("E-mail ou senha inválidos. Verifique seus dados ou contate o administrador.");
       setLoading(false);
       return;
     }
 
-    // Login com sucesso
-    // Salva plano ativo provisoriamente (será substituído por checagem no BD depois)
-    localStorage.setItem("hasActivePlan", "true");
-    router.push("/dashboard");
+    const userId = data.user.id;
+    const trialKey = `trial_start_${userId}`;
+
+    // Se é o primeiro login, registra o início do trial agora
+    if (!localStorage.getItem(trialKey)) {
+      localStorage.setItem(trialKey, new Date().toISOString());
+    }
+
+    // Verifica se ainda está no trial
+    const trialStart = localStorage.getItem(trialKey)!;
+    const startDate = new Date(trialStart);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < TRIAL_DAYS) {
+      localStorage.setItem("hasActivePlan", "trial");
+      router.push("/dashboard");
+    } else {
+      // Trial expirado — precisa escolher um plano
+      localStorage.removeItem("hasActivePlan");
+      router.push("/cobranca");
+    }
   };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.95rem 1rem",
+    borderRadius: "0.8rem",
+    background: "rgba(10,10,10,0.6)",
+    border: "1px solid rgba(245,230,200,0.12)",
+    color: "white",
+    fontSize: "1rem",
+    outline: "none",
+    transition: "border-color 0.2s ease",
+  };
+
   return (
-    <div className="entry-page" style={{ overflow: "hidden" }}>
-      <header className="app-header" style={{ position: "absolute", top: 0, width: "100%", background: "transparent", border: "none" }}>
+    <div className="entry-page" style={{ minHeight: "100vh", overflowX: "hidden", overflowY: "auto" }}>
+      <header
+        className="app-header"
+        style={{ position: "absolute", top: 0, width: "100%", background: "transparent", border: "none" }}
+      >
         <Link className="brand" href="/">
           <span className="brand__mark">DP</span>
           <span>Delírio Privê</span>
         </Link>
         <nav className="app-nav" aria-label="Navegação">
           <Link href="/">Início</Link>
-          <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
-          <Link className="login-link is-active" href="/login">Entrar</Link>
         </nav>
       </header>
 
-      <main 
-        className="app-page auth" 
-        style={{ 
-          minHeight: "100vh", 
-          display: "flex", 
-          alignItems: "center", 
+      <main
+        className="app-page auth"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "flex-start",
           justifyContent: "center",
-          background: `radial-gradient(circle at center, rgba(212, 175, 55, 0.05) 0%, transparent 60%), linear-gradient(to bottom, #0a0a0a, #111)`
+          padding: "clamp(5.8rem, 14vh, 7rem) 1rem 3rem",
+          background: `radial-gradient(circle at center, rgba(212,175,55,0.06) 0%, transparent 65%), linear-gradient(to bottom, #0a0a0a, #111)`,
         }}
       >
-        <form 
-          className="checkout-form auth-form" 
+        <form
           onSubmit={handleLogin}
           style={{
             width: "100%",
             maxWidth: "420px",
-            padding: "3rem",
+            padding: "clamp(1.8rem, 5vw, 3rem)",
             borderRadius: "1.5rem",
-            background: "rgba(18, 18, 18, 0.6)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(212, 175, 55, 0.15)",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-            textAlign: "center"
+            background: "rgba(18,18,18,0.65)",
+            backdropFilter: "blur(24px)",
+            border: "1px solid rgba(212,175,55,0.16)",
+            boxShadow: "0 30px 60px -15px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.05)",
+            textAlign: "center",
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.25rem",
           }}
         >
-          <div style={{ marginBottom: "2rem" }}>
-            <div style={{ 
-              width: "50px", 
-              height: "50px", 
-              background: "linear-gradient(135deg, var(--gold-secondary), var(--gold-primary))", 
-              borderRadius: "50%", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              margin: "0 auto 1rem",
-              color: "#111",
-              fontWeight: "900",
-              fontSize: "1.2rem",
-              boxShadow: "0 0 20px rgba(212, 175, 55, 0.4)"
-            }}>
+          {/* Logo */}
+          <div style={{ marginBottom: "0.25rem" }}>
+            <div
+              style={{
+                width: "54px",
+                height: "54px",
+                background: "linear-gradient(135deg, var(--gold-secondary), var(--gold-primary))",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 1rem",
+                color: "#111",
+                fontWeight: "900",
+                fontSize: "1.1rem",
+                boxShadow: "0 0 28px rgba(212,175,55,0.45)",
+              }}
+            >
               DP
             </div>
-            <p className="eyebrow" style={{ color: "var(--gold-primary)" }}>Acesso Exclusivo</p>
-            <h1 style={{ fontSize: "2rem", margin: "0.5rem 0 0 0" }}>Login Premium</h1>
+            <p className="eyebrow" style={{ color: "var(--gold-primary)", margin: "0 0 0.4rem" }}>
+              Acesso Exclusivo
+            </p>
+            <h1
+              style={{
+                fontSize: "clamp(1.6rem, 5vw, 2.2rem)",
+                margin: 0,
+                fontFamily: "'Playfair Display', Georgia, serif",
+              }}
+            >
+              Bem-vinda ao Painel
+            </h1>
           </div>
-          
+
+          {/* Info para usuários sem conta */}
+          <div
+            style={{
+              padding: "0.8rem 1rem",
+              background: "rgba(212,175,55,0.07)",
+              border: "1px solid rgba(212,175,55,0.18)",
+              borderRadius: "0.65rem",
+              fontSize: "0.83rem",
+              color: "var(--text-secondary)",
+              lineHeight: 1.5,
+            }}
+          >
+            🔐 Acesso apenas para perfis aprovados pelo administrador.
+          </div>
+
+          {/* Erro */}
           {error && (
-            <div style={{ marginBottom: "1.5rem", padding: "0.8rem", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "0.5rem", color: "#f87171", fontSize: "0.9rem" }}>
+            <div
+              style={{
+                padding: "0.8rem",
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                borderRadius: "0.5rem",
+                color: "#f87171",
+                fontSize: "0.9rem",
+              }}
+            >
               {error}
             </div>
           )}
 
-          <label className="input-group" style={{ textAlign: "left", marginBottom: "1.5rem" }}>
-            <span>E-mail profissional</span>
-            <input 
-              type="email" 
-              name="email" 
-              placeholder="contato@modelo.com" 
+          {/* Campos */}
+          <label className="input-group" style={{ textAlign: "left" }}>
+            <span>E-mail</span>
+            <input
+              type="email"
+              placeholder="contato@modelo.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ width: "100%", padding: "1rem", borderRadius: "0.8rem", background: "rgba(10, 10, 10, 0.6)", border: "1px solid rgba(245, 230, 200, 0.1)", color: "white" }}
+              style={inputStyle}
             />
           </label>
-          
-          <label className="input-group" style={{ textAlign: "left", marginBottom: "1.5rem" }}>
-            <span>Senha segura</span>
-            <input 
-              type="password" 
-              name="password" 
-              placeholder="••••••••" 
+
+          <label className="input-group" style={{ textAlign: "left" }}>
+            <span>Senha</span>
+            <input
+              type="password"
+              placeholder="••••••••"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ width: "100%", padding: "1rem", borderRadius: "0.8rem", background: "rgba(10, 10, 10, 0.6)", border: "1px solid rgba(245, 230, 200, 0.1)", color: "white" }}
+              style={inputStyle}
             />
           </label>
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-            <label className="check-row" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-              <input type="checkbox" defaultChecked style={{ accentColor: "var(--gold-primary)", width: "1rem", height: "1rem" }} />
-              <span>Lembrar sessão</span>
-            </label>
-            <Link className="subtle-link" href="#" style={{ fontSize: "0.9rem", color: "var(--gold-primary)", textDecoration: "underline" }}>Esqueceu a senha?</Link>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-0.5rem" }}>
+            <Link
+              href="#"
+              style={{ fontSize: "0.85rem", color: "var(--gold-primary)", textDecoration: "underline" }}
+            >
+              Esqueceu a senha?
+            </Link>
           </div>
-          
-          <button 
-            className={`button button--primary ${loading ? "is-loading" : ""}`} 
+
+          <button
+            className={`button button--primary ${loading ? "is-loading" : ""}`}
             type="submit"
             disabled={loading}
-            style={{ width: "100%", padding: "1.2rem", fontSize: "1.1rem", borderRadius: "0.8rem", fontWeight: "bold", position: "relative" }}
+            style={{
+              width: "100%",
+              padding: "1.15rem",
+              fontSize: "1.05rem",
+              borderRadius: "0.8rem",
+              fontWeight: "bold",
+            }}
           >
             {loading ? "Autenticando..." : "Entrar no Painel"}
           </button>
+
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
+            Novo por aqui? Entre em contato com{" "}
+            <Link href="/cadastro-whatsapp" style={{ color: "var(--gold-primary)", textDecoration: "underline" }}>
+              nosso atendimento
+            </Link>
+            .
+          </p>
         </form>
       </main>
     </div>

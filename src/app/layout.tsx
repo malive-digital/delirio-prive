@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Delírio Privê",
   description: "Escolha seu interesse e acesse o catálogo premium do Delírio Privê.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -24,7 +30,11 @@ export default function RootLayout({
       </head>
       <body>
         {children}
-        <Script src="/script.js" strategy="afterInteractive" />
+        <footer className="site-footer">
+          <span>© 2026 Delírio Privê. Todos os direitos reservados.</span>
+          <span>Plataforma independente de divulgação de perfis. Não somos agência, boate ou intermediadores.</span>
+        </footer>
+        <Script src="/script.js?v=20260506-3" strategy="afterInteractive" />
       </body>
     </html>
   );

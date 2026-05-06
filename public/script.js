@@ -261,15 +261,6 @@ if (checkoutForm && selectedPlan) {
   });
 }
 
-const searchInput = document.querySelector("#profile-search");
-const profileCards = document.querySelectorAll(".profile-card[data-search]");
-const resultCount = document.querySelector("#result-count");
-const emptyState = document.querySelector("#empty-state");
-const sortProfiles = document.querySelector("#sort-profiles");
-const filterSelects = document.querySelectorAll(".filter-bar select");
-const filterToggle = document.querySelector("#filter-toggle");
-const catalogControls = document.querySelector("#catalog-controls");
-const filterSummaryText = document.querySelector("#filter-summary-text");
 let activeFilter = "all";
 
 function normalizeText(value) {
@@ -279,8 +270,21 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+function getCatalogElements() {
+  return {
+    searchInput: document.querySelector("#profile-search"),
+    profileCards: document.querySelectorAll(".profile-card[data-search]"),
+    resultCount: document.querySelector("#result-count"),
+    emptyState: document.querySelector("#empty-state"),
+    sortProfiles: document.querySelector("#sort-profiles"),
+    filterSelects: document.querySelectorAll(".filter-bar select:not(#sort-profiles)"),
+    filterSummaryText: document.querySelector("#filter-summary-text"),
+  };
+}
+
 function getSelectTerms() {
-  const placeholderTerms = ["cidade", "bairro", "idade", "categoria", "preco", "disponibilidade", "estado", "perfil", "servico", "serviÃ§o", "pagamento", "identidade", "viagem"];
+  const { filterSelects } = getCatalogElements();
+  const placeholderTerms = ["cidade", "bairro", "idade", "categoria", "preco", "disponibilidade", "estado", "perfil", "servico", "serviÃ§o", "pagamento", "identidade", "viagem", "featured", "new", "views"];
 
   return Array.from(filterSelects)
     .map((select) => normalizeText(select.value))
@@ -297,6 +301,8 @@ function getSelectTerms() {
 }
 
 function updateFilterSummary(visibleCount) {
+  const { filterSummaryText } = getCatalogElements();
+
   if (!filterSummaryText) {
     return;
   }
@@ -307,11 +313,16 @@ function updateFilterSummary(visibleCount) {
   const pieces = [...selectedTerms, activeChipLabel].filter(Boolean);
 
   filterSummaryText.textContent = pieces.length
-    ? `${pieces.join(" Â· ")} Â· ${visibleCount} perfis`
-    : `Todos os perfis Â· ${visibleCount} perfis`;
+    ? `${pieces.join(" · ")} · ${visibleCount} perfis`
+    : `Todos os perfis · ${visibleCount} perfis`;
 }
 
 function filterProfiles() {
+  const { searchInput, profileCards, resultCount, emptyState } = getCatalogElements();
+  if (!searchInput && !profileCards.length) {
+    return;
+  }
+
   const term = searchInput ? normalizeText(searchInput.value.trim()) : "";
   const selectTerms = getSelectTerms();
   let visibleCount = 0;
@@ -342,29 +353,17 @@ function filterProfiles() {
   updateFilterSummary(visibleCount);
 }
 
-if (searchInput) {
-  searchInput.addEventListener("input", filterProfiles);
+let catalogRefreshTimer;
+
+function scheduleCatalogRefresh() {
+  window.clearTimeout(catalogRefreshTimer);
+  catalogRefreshTimer = window.setTimeout(() => {
+    filterProfiles();
+  }, 0);
 }
 
-filterSelects.forEach((select) => {
-  select.addEventListener("change", () => {
-    catalogControls?.classList.remove("is-collapsed");
-    filterToggle?.setAttribute("aria-expanded", "true");
-    filterProfiles();
-  });
-});
-
-document.querySelectorAll(".quick-chip, .sidebar-filter").forEach((chip) => {
-  chip.addEventListener("click", (event) => {
-    event.preventDefault();
-    document.querySelectorAll(".quick-chip, .sidebar-filter").forEach((item) => item.classList.remove("is-active"));
-    chip.classList.add("is-active");
-    activeFilter = chip.dataset.filter || "all";
-    filterProfiles();
-  });
-});
-
 function resetCatalogFilters() {
+  const { searchInput, filterSelects } = getCatalogElements();
   activeFilter = "all";
   if (searchInput) {
     searchInput.value = "";
@@ -378,22 +377,51 @@ function resetCatalogFilters() {
   filterProfiles();
 }
 
-document.addEventListener("click", (event) => {
-  if (event.target.closest(".js-clear-filters")) {
-    event.preventDefault();
-    resetCatalogFilters();
+document.addEventListener("input", (event) => {
+  if (event.target?.closest?.("#profile-search")) {
+    filterProfiles();
   }
 });
 
-if (filterToggle && catalogControls) {
-  filterToggle.addEventListener("click", () => {
+document.addEventListener("change", (event) => {
+  const select = event.target?.closest?.(".filter-bar select");
+  if (select) {
+    const catalogControls = document.querySelector("#catalog-controls");
+    const filterToggle = document.querySelector("#filter-toggle");
+    catalogControls?.classList.remove("is-collapsed");
+    filterToggle?.setAttribute("aria-expanded", "true");
+    filterProfiles();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  const chip = event.target.closest(".quick-chip, .sidebar-filter");
+  if (chip) {
+    event.preventDefault();
+    document.querySelectorAll(".quick-chip, .sidebar-filter").forEach((item) => item.classList.remove("is-active"));
+    chip.classList.add("is-active");
+    activeFilter = chip.dataset.filter || "all";
+    filterProfiles();
+    return;
+  }
+
+  if (event.target.closest(".js-clear-filters")) {
+    event.preventDefault();
+    resetCatalogFilters();
+    return;
+  }
+
+  const filterToggle = event.target.closest("#filter-toggle");
+  const catalogControls = document.querySelector("#catalog-controls");
+  if (filterToggle && catalogControls) {
     const isCollapsed = catalogControls.classList.toggle("is-collapsed");
     filterToggle.setAttribute("aria-expanded", String(!isCollapsed));
-  });
-}
+  }
+});
 
-if (sortProfiles && profileCards.length) {
-  sortProfiles.addEventListener("change", () => {
+document.addEventListener("change", (event) => {
+  const sortProfiles = event.target?.closest?.("#sort-profiles");
+  if (sortProfiles) {
     const sortKey = sortProfiles.value;
     document.querySelectorAll(".profile-grid").forEach((grid) => {
       const sortedCards = Array.from(grid.querySelectorAll(".profile-card")).sort(
@@ -401,8 +429,30 @@ if (sortProfiles && profileCards.length) {
       );
       sortedCards.forEach((card) => grid.appendChild(card));
     });
+  }
+});
+
+window.addEventListener("pageshow", scheduleCatalogRefresh);
+window.addEventListener("popstate", scheduleCatalogRefresh);
+document.addEventListener("DOMContentLoaded", scheduleCatalogRefresh);
+
+if (document.body) {
+  const catalogObserver = new MutationObserver((mutations) => {
+    const shouldRefresh = mutations.some((mutation) =>
+      Array.from(mutation.addedNodes).some((node) =>
+        node.nodeType === 1 && node.querySelector?.("#profile-search, .profile-card[data-search], #filter-summary-text"),
+      ),
+    );
+
+    if (shouldRefresh) {
+      scheduleCatalogRefresh();
+    }
   });
+
+  catalogObserver.observe(document.body, { childList: true, subtree: true });
 }
+
+scheduleCatalogRefresh();
 
 document.querySelectorAll(".favorite-button").forEach((button) => {
   button.setAttribute("aria-pressed", String(button.classList.contains("is-active")));
