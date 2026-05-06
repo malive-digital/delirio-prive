@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { getPlanConfig } from "@/lib/plans";
 
 export default function Cobranca() {
   const [selectedPlan, setSelectedPlan] = useState("Top Privê");
@@ -85,6 +86,7 @@ export default function Cobranca() {
                 </p>
               </div>
               <ul style={{ minHeight: "180px" }}>
+                <li style={{ marginBottom: "0.8rem", fontSize: "1.05rem" }}>{getPlanConfig(plan.name).mediaLabel}</li>
                 {plan.features.map((feat, idx) => (
                   <li key={idx} style={{ marginBottom: "0.8rem", fontSize: "1.05rem" }}>{feat}</li>
                 ))}

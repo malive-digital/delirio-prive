@@ -3,21 +3,65 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { getPlanConfig } from "@/lib/plans";
+
+const TRIAL_DAYS = 7;
+
+type MediaFile = {
+  name: string;
+  type: "photo" | "video";
+  status: string;
+};
+
+const initialMediaFiles: MediaFile[] = [];
+const baseApprovedPhotoCount = 1;
+const baseApprovedVideoCount = 1;
 
 export default function Dashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("resumo");
   const [isOnline, setIsOnline] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [isTrial, setIsTrial] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(initialMediaFiles);
+  const [mediaLimitError, setMediaLimitError] = useState("");
 
   useEffect(() => {
-    // Redireciona no primeiro acesso ou se não tiver plano
     const hasPlan = localStorage.getItem("hasActivePlan");
     if (!hasPlan) {
       router.push("/cobranca");
+      return;
     }
 
-    // Carrega status online
+    // Calcula dias restantes do trial
+    const checkTrial = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const trialKey = `trial_start_${user.id}`;
+      const trialStart = localStorage.getItem(trialKey);
+
+      if (trialStart && hasPlan === "trial") {
+        setIsTrial(true);
+        const startDate = new Date(trialStart);
+        const now = new Date();
+        const diffMs = now.getTime() - startDate.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const daysLeft = TRIAL_DAYS - diffDays;
+
+        if (daysLeft <= 0) {
+          localStorage.removeItem("hasActivePlan");
+          router.push("/cobranca");
+          return;
+        }
+        setTrialDaysLeft(daysLeft);
+      }
+    };
+
+    checkTrial();
+
     const onlineStatus = localStorage.getItem("isOnline");
     if (onlineStatus !== null) {
       setIsOnline(onlineStatus === "true");
@@ -33,18 +77,58 @@ export default function Dashboard() {
   // Estado para controlar se as notificações foram lidas
   const [notificationsRead, setNotificationsRead] = useState(false);
 
-  // Exemplo de dados mockados
-  const daysToExpire = 5; // Simulação de 5 dias
-  const notifications = [
-    { id: 1, message: `Faltam ${daysToExpire} dias para o vencimento do seu plano Top Privê.` }
-  ];
+  const daysToExpire = 5;
+  const notifications = isTrial && trialDaysLeft !== null
+    ? [{ id: 1, message: `⏳ Plano Básico gratuito: ${trialDaysLeft} dia(s) restante(s) de teste.` }]
+    : [{ id: 1, message: `Faltam ${daysToExpire} dias para o vencimento do seu plano Top Privê.` }];
 
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
-    if (!showNotifications) {
-      // Marca como lido após abrir
-      setNotificationsRead(true);
+    if (!showNotifications) setNotificationsRead(true);
+  };
+
+  const currentPlan = isTrial ? getPlanConfig("Basico") : getPlanConfig("Top Prive");
+  const currentBaseApprovedPhotoCount = currentPlan.key === "Basico" ? 0 : baseApprovedPhotoCount;
+  const currentBaseApprovedVideoCount = currentPlan.key === "Basico" ? 0 : baseApprovedVideoCount;
+  const approvedOrPendingMedia = mediaFiles.filter((file) => !file.status.toLowerCase().includes("recusada"));
+  const photoCount = currentBaseApprovedPhotoCount + approvedOrPendingMedia.filter((file) => file.type === "photo").length;
+  const videoCount = currentBaseApprovedVideoCount + approvedOrPendingMedia.filter((file) => file.type === "video").length;
+  const canUploadPhotos = photoCount < currentPlan.limits.photos;
+  const canUploadVideos = videoCount < currentPlan.limits.videos;
+
+  const handleMediaSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length === 0) return;
+
+    const newPhotos = selectedFiles.filter((file) => file.type.startsWith("image/"));
+    const newVideos = selectedFiles.filter((file) => file.type.startsWith("video/"));
+    const unsupportedFiles = selectedFiles.length - newPhotos.length - newVideos.length;
+
+    if (unsupportedFiles > 0) {
+      setMediaLimitError("Envie apenas imagens ou videos.");
+      event.target.value = "";
+      return;
     }
+
+    if (photoCount + newPhotos.length > currentPlan.limits.photos) {
+      setMediaLimitError(`Seu plano ${currentPlan.displayName} permite ate ${currentPlan.limits.photos} fotos.`);
+      event.target.value = "";
+      return;
+    }
+
+    if (videoCount + newVideos.length > currentPlan.limits.videos) {
+      setMediaLimitError(`Seu plano ${currentPlan.displayName} permite ate ${currentPlan.limits.videos} video(s).`);
+      event.target.value = "";
+      return;
+    }
+
+    setMediaFiles((currentFiles) => [
+      ...currentFiles,
+      ...newPhotos.map((file) => ({ name: file.name, type: "photo" as const, status: "Em analise" })),
+      ...newVideos.map((file) => ({ name: file.name, type: "video" as const, status: "Em analise" })),
+    ]);
+    setMediaLimitError("");
+    event.target.value = "";
   };
 
   return (
@@ -110,7 +194,67 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="app-page dashboard" style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem" }}>
+      <main className="app-page dashboard" style={{ maxWidth: "1200px", margin: "0 auto", padding: "clamp(1rem, 3vw, 2rem)" }}>
+        {/* Banner de trial */}
+        {isTrial && trialDaysLeft !== null && (
+          <div style={{
+            marginBottom: "1.5rem",
+            padding: "1.1rem 1.25rem",
+            background: "linear-gradient(135deg, rgba(212,175,55,0.12), rgba(75,15,26,0.18))",
+            border: "1px solid rgba(212,175,55,0.35)",
+            borderRadius: "0.9rem",
+            boxShadow: "0 0 28px rgba(212,175,55,0.06)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.85rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                {/* Contador de dias em destaque */}
+                <div style={{
+                  minWidth: "3.5rem",
+                  height: "3.5rem",
+                  borderRadius: "0.6rem",
+                  background: "linear-gradient(135deg, var(--gold-secondary), var(--gold-primary))",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#111",
+                  boxShadow: "0 0 20px rgba(212,175,55,0.3)",
+                  flexShrink: 0
+                }}>
+                  <strong style={{ fontSize: "1.5rem", fontWeight: "900", lineHeight: 1 }}>{trialDaysLeft}</strong>
+                  <span style={{ fontSize: "0.6rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em" }}>dias</span>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: "bold", color: "var(--champagne)", fontSize: "0.95rem" }}>
+                    Plano Básico gratuito ativo
+                  </p>
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
+                    {trialDaysLeft === 1 ? "Último dia" : `${trialDaysLeft} dias restantes`} de {TRIAL_DAYS} dias grátis
+                  </p>
+                </div>
+              </div>
+              <Link
+                className="button button--primary"
+                href="/cobranca"
+                style={{ padding: "0.6rem 1.2rem", fontSize: "0.85rem", whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                Ver Planos
+              </Link>
+            </div>
+            {/* Barra de progresso */}
+            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "999px", height: "5px", overflow: "hidden" }}>
+              <div style={{
+                height: "100%",
+                width: `${(trialDaysLeft / TRIAL_DAYS) * 100}%`,
+                background: trialDaysLeft <= 2
+                  ? "linear-gradient(90deg, #ef4444, #f87171)"
+                  : "linear-gradient(90deg, var(--gold-secondary), var(--gold-primary))",
+                borderRadius: "999px",
+                transition: "width 0.5s ease"
+              }} />
+            </div>
+          </div>
+        )}
         
         {/* Cabeçalho do Dashboard */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "3rem" }}>
@@ -193,7 +337,7 @@ export default function Dashboard() {
 
                 <div style={{ background: "linear-gradient(145deg, rgba(212,175,55,0.15), rgba(18,18,18,0.8))", padding: "1.5rem", borderRadius: "1rem", border: "1px solid rgba(212,175,55,0.3)" }}>
                   <p style={{ color: "var(--champagne)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Seu Plano Atual</p>
-                  <strong style={{ display: "block", fontSize: "2rem", color: "white", margin: "0.5rem 0" }}>Top Privê</strong>
+                  <strong style={{ display: "block", fontSize: "2rem", color: "white", margin: "0.5rem 0" }}>{currentPlan.displayName}</strong>
                   <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Vence em {daysToExpire} dias</span>
                 </div>
               </div>
@@ -305,7 +449,7 @@ export default function Dashboard() {
 
                 {/* SERVIÇOS E PAGAMENTO */}
                 <h3 style={{ fontSize: "1.2rem", color: "var(--gold-primary)", marginBottom: "1rem", marginTop: "2rem" }}>Serviços e Pagamento</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
                   <div style={{ background: "rgba(18,18,18,0.5)", padding: "1.5rem", borderRadius: "1rem", border: "1px solid rgba(245,230,200,0.1)" }}>
                     <h4 style={{ marginBottom: "1rem" }}>Serviços Prestados</h4>
                     <div style={{ display: "grid", gap: "0.8rem", color: "var(--text-secondary)" }}>
@@ -354,8 +498,23 @@ export default function Dashboard() {
               <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>Galeria e Aprovação</h2>
               <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>Envie fotos e vídeos para análise da nossa equipe de curadoria.</p>
               
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
-                <div style={{ background: "rgba(18,18,18,0.5)", border: "2px dashed rgba(212,175,55,0.3)", borderRadius: "1rem", padding: "3rem", textAlign: "center", cursor: "pointer" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                <div style={{ background: "rgba(18,18,18,0.6)", padding: "1rem", borderRadius: "0.75rem", border: "1px solid rgba(245,230,200,0.1)" }}>
+                  <p style={{ margin: "0 0 0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", fontWeight: 800 }}>Plano atual</p>
+                  <strong style={{ color: "var(--champagne)", fontSize: "1.25rem" }}>{currentPlan.displayName}</strong>
+                </div>
+                <div style={{ background: "rgba(18,18,18,0.6)", padding: "1rem", borderRadius: "0.75rem", border: "1px solid rgba(245,230,200,0.1)" }}>
+                  <p style={{ margin: "0 0 0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", fontWeight: 800 }}>Fotos</p>
+                  <strong style={{ color: canUploadPhotos ? "var(--gold-primary)" : "#f87171", fontSize: "1.25rem" }}>{photoCount}/{currentPlan.limits.photos}</strong>
+                </div>
+                <div style={{ background: "rgba(18,18,18,0.6)", padding: "1rem", borderRadius: "0.75rem", border: "1px solid rgba(245,230,200,0.1)" }}>
+                  <p style={{ margin: "0 0 0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textTransform: "uppercase", fontWeight: 800 }}>Videos</p>
+                  <strong style={{ color: canUploadVideos ? "var(--gold-primary)" : "#f87171", fontSize: "1.25rem" }}>{videoCount}/{currentPlan.limits.videos}</strong>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "2rem" }}>
+                <label style={{ background: "rgba(18,18,18,0.5)", border: "2px dashed rgba(212,175,55,0.3)", borderRadius: "1rem", padding: "3rem", textAlign: "center", cursor: "pointer", display: "block" }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 1rem" }}>
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="17 8 12 3 7 8"></polyline>
@@ -363,11 +522,20 @@ export default function Dashboard() {
                   </svg>
                   <h3 style={{ color: "white", marginBottom: "0.5rem" }}>Clique para enviar mídia</h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>JPG, PNG ou MP4 (Máx 50MB)</p>
-                </div>
+                  <p style={{ color: "var(--gold-primary)", fontSize: "0.85rem", margin: "0.75rem 0 0" }}>{currentPlan.mediaLabel}</p>
+                  {mediaLimitError && <p style={{ color: "#f87171", fontSize: "0.85rem", margin: "0.75rem 0 0" }}>{mediaLimitError}</p>}
+                  <input type="file" accept="image/*,video/*" multiple onChange={handleMediaSelection} style={{ display: "none" }} />
+                </label>
 
                 <div>
                   <h3 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Status dos Arquivos</h3>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {mediaFiles.map((file) => (
+                      <li key={file.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "0.5rem", border: "1px solid rgba(245,230,200,0.05)", flexWrap: "wrap" }}>
+                        <span style={{ color: "white" }}>{file.name}</span>
+                        <span style={{ padding: "0.3rem 0.8rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>{file.status}</span>
+                      </li>
+                    ))}
                     <li style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "0.5rem", border: "1px solid rgba(245,230,200,0.05)" }}>
                       <span style={{ color: "white" }}>ensaio_vip_01.jpg</span>
                       <span style={{ padding: "0.3rem 0.8rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>Aprovada</span>
@@ -391,41 +559,25 @@ export default function Dashboard() {
             <div>
               <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>Histórico de Assinaturas</h2>
               <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>Controle de faturas e planos adquiridos.</p>
-              
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
-                    <th style={{ padding: "1rem" }}>Data</th>
-                    <th style={{ padding: "1rem" }}>Plano</th>
-                    <th style={{ padding: "1rem" }}>Valor</th>
-                    <th style={{ padding: "1rem" }}>Método</th>
-                    <th style={{ padding: "1rem" }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>18/03/2026</td>
-                    <td style={{ padding: "1rem" }}>Top Privê</td>
-                    <td style={{ padding: "1rem" }}>R$ 149,90</td>
-                    <td style={{ padding: "1rem" }}>PIX</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80", fontWeight: "bold" }}>Pago</span></td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>18/02/2026</td>
-                    <td style={{ padding: "1rem" }}>Top Privê</td>
-                    <td style={{ padding: "1rem" }}>R$ 149,90</td>
-                    <td style={{ padding: "1rem" }}>PIX</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80", fontWeight: "bold" }}>Pago</span></td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>18/01/2026</td>
-                    <td style={{ padding: "1rem" }}>Premium</td>
-                    <td style={{ padding: "1rem" }}>R$ 89,90</td>
-                    <td style={{ padding: "1rem" }}>Cartão</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80", fontWeight: "bold" }}>Pago</span></td>
-                  </tr>
-                </tbody>
-              </table>
+
+              {/* Cards responsivos em vez de tabela */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {[
+                  { data: "18/03/2026", plano: "Top Privê", valor: "R$ 149,90", metodo: "PIX", status: "Pago" },
+                  { data: "18/02/2026", plano: "Top Privê", valor: "R$ 149,90", metodo: "PIX", status: "Pago" },
+                  { data: "18/01/2026", plano: "Premium", valor: "R$ 89,90", metodo: "Cartão", status: "Pago" },
+                ].map((row, i) => (
+                  <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.25)", padding: "1rem 1.25rem", borderRadius: "0.75rem", border: "1px solid rgba(245,230,200,0.07)" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", flex: 1 }}>
+                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Data</p><p style={{ margin: 0, color: "white" }}>{row.data}</p></div>
+                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Plano</p><p style={{ margin: 0, color: "var(--gold-primary)", fontWeight: 700 }}>{row.plano}</p></div>
+                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Valor</p><p style={{ margin: 0, color: "white" }}>{row.valor}</p></div>
+                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Método</p><p style={{ margin: 0, color: "white" }}>{row.metodo}</p></div>
+                    </div>
+                    <span style={{ padding: "0.4rem 0.9rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontSize: "0.82rem", fontWeight: 700, border: "1px solid rgba(34,197,94,0.25)" }}>{row.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
