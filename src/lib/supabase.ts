@@ -9,7 +9,7 @@ const authStorage = {
 
     const persistence = window.localStorage.getItem("delirioSessionPersistence");
     if (persistence === "session") {
-      return window.sessionStorage.getItem(key);
+      return window.sessionStorage.getItem(key) || window.localStorage.getItem(key);
     }
 
     return window.localStorage.getItem(key) || window.sessionStorage.getItem(key);

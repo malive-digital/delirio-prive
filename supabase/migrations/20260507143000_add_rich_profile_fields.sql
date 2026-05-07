@@ -1,0 +1,17 @@
+alter table public.profiles
+add column if not exists headline text,
+add column if not exists age text,
+add column if not exists neighborhood text,
+add column if not exists price_15 text,
+add column if not exists price_30 text,
+add column if not exists price_60 text,
+add column if not exists overnight_price text,
+add column if not exists serves text,
+add column if not exists has_place text not null default 'nao_informado',
+add column if not exists availability text,
+add column if not exists payment_methods text,
+add column if not exists services text,
+add column if not exists specialties text,
+add column if not exists restrictions text,
+add column if not exists appearance text,
+add column if not exists languages text;

@@ -2714,6 +2714,21 @@ body.is-switching-category .explore {
   font-weight: 700;
 }
 
+.nav-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.nav-button:hover,
+.nav-button:focus-visible {
+  color: var(--gold-primary);
+  outline: 0;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2816,6 +2831,22 @@ body.is-switching-category .explore {
 
 .dashboard-form-grid {
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.dashboard-fieldset {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid rgba(245, 230, 200, 0.12);
+  border-radius: 0.9rem;
+  background: rgba(10, 10, 10, 0.24);
+}
+
+.dashboard-fieldset legend {
+  padding: 0 0.4rem;
+  color: var(--gold-primary);
+  font-weight: 900;
 }
 
 .dashboard-facts {

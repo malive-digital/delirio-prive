@@ -17,6 +17,22 @@ type ProfileForm = {
   type: string;
   whatsapp: string;
   location: string;
+  headline: string;
+  age: string;
+  neighborhood: string;
+  price_15: string;
+  price_30: string;
+  price_60: string;
+  overnight_price: string;
+  serves: string;
+  has_place: string;
+  availability: string;
+  payment_methods: string;
+  services: string;
+  specialties: string;
+  restrictions: string;
+  appearance: string;
+  languages: string;
   description: string;
   active_plan: string;
   is_online: boolean;
@@ -40,6 +56,22 @@ const emptyProfile: ProfileForm = {
   type: "mulher",
   whatsapp: "",
   location: "",
+  headline: "",
+  age: "",
+  neighborhood: "",
+  price_15: "",
+  price_30: "",
+  price_60: "",
+  overnight_price: "",
+  serves: "",
+  has_place: "nao_informado",
+  availability: "",
+  payment_methods: "",
+  services: "",
+  specialties: "",
+  restrictions: "",
+  appearance: "",
+  languages: "",
   description: "",
   active_plan: "Basico",
   is_online: false,
@@ -89,6 +121,13 @@ export default function Dashboard() {
   const trialPercent = trialDaysLeft === null ? 0 : Math.max(0, Math.min(100, (trialDaysLeft / TRIAL_DAYS) * 100));
   const usedPhotos = mediaItems.filter((item) => item.media_type === "photo" && item.approval_status !== "rejected").length;
   const availablePhotos = Math.max(0, currentPlan.limits.photos - usedPhotos);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("hasActivePlan");
+    sessionStorage.removeItem("hasActivePlan");
+    router.push("/login");
+  };
 
   const loadDocumentUrl = async (path: string | null) => {
     if (!path) {
@@ -154,7 +193,7 @@ export default function Dashboard() {
       const { data: profileData } = await supabase
         .from("profiles")
         .select(
-          "name,type,whatsapp,location,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
+          "name,type,whatsapp,location,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
         )
         .eq("id", user.id)
         .maybeSingle();
@@ -187,6 +226,22 @@ export default function Dashboard() {
       name: nextProfile.name.trim() || null,
       whatsapp: nextProfile.whatsapp.trim() || null,
       location: nextProfile.location.trim() || null,
+      headline: nextProfile.headline.trim() || null,
+      age: nextProfile.age.trim() || null,
+      neighborhood: nextProfile.neighborhood.trim() || null,
+      price_15: nextProfile.price_15.trim() || null,
+      price_30: nextProfile.price_30.trim() || null,
+      price_60: nextProfile.price_60.trim() || null,
+      overnight_price: nextProfile.overnight_price.trim() || null,
+      serves: nextProfile.serves.trim() || null,
+      has_place: nextProfile.has_place,
+      availability: nextProfile.availability.trim() || null,
+      payment_methods: nextProfile.payment_methods.trim() || null,
+      services: nextProfile.services.trim() || null,
+      specialties: nextProfile.specialties.trim() || null,
+      restrictions: nextProfile.restrictions.trim() || null,
+      appearance: nextProfile.appearance.trim() || null,
+      languages: nextProfile.languages.trim() || null,
       description: nextProfile.description.trim() || null,
       active_plan: nextProfile.active_plan,
       is_online: nextProfile.is_online,
@@ -364,6 +419,7 @@ export default function Dashboard() {
           <Link href="/">Inicio</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
+          <button className="nav-button" type="button" onClick={handleLogout}>Sair</button>
         </nav>
       </header>
 
@@ -452,6 +508,7 @@ export default function Dashboard() {
                       <div className="profile-card__body">
                         <span className="tag tag--premium">{currentPlan.displayName}</span>
                         <h2>{profile.name || "Nome artistico"}</h2>
+                        {profile.headline && <p>{profile.headline}</p>}
                         <p>{profile.location || "Localizacao"}</p>
                         {profile.description && <p>{profile.description}</p>}
                         <div className="trust-row">
@@ -471,6 +528,14 @@ export default function Dashboard() {
                         <p>{profile.whatsapp || "Nao informado"}</p>
                       </article>
                       <article>
+                        <strong>Valor inicial</strong>
+                        <p>{profile.price_15 || profile.price_30 || profile.price_60 || "Nao informado"}</p>
+                      </article>
+                      <article>
+                        <strong>Atende</strong>
+                        <p>{profile.serves || "Nao informado"}</p>
+                      </article>
+                      <article>
                         <strong>Fotos</strong>
                         <p>{usedPhotos}/{currentPlan.limits.photos} usadas</p>
                       </article>
@@ -486,9 +551,11 @@ export default function Dashboard() {
                   <div>
                     <span className="section-kicker">Perfil publico</span>
                     <h2>Informacoes exibidas no perfil</h2>
-                    <p>Preencha aqui os dados que aparecem no card e na pagina publica do perfil.</p>
+                    <p>Preencha os dados principais, valores, atendimento e preferencias que formam a pagina publica do perfil.</p>
                   </div>
 
+                  <fieldset className="dashboard-fieldset">
+                    <legend>Identificacao</legend>
                   <div className="dashboard-form-grid">
                     <label className="input-group">
                       <span>Nome artistico</span>
@@ -510,12 +577,42 @@ export default function Dashboard() {
                     </label>
 
                     <label className="input-group">
+                      <span>Idade</span>
+                      <input
+                        value={profile.age}
+                        onChange={(event) => updateProfileField("age", event.target.value)}
+                        type="text"
+                        placeholder="Ex: 25 anos"
+                      />
+                    </label>
+
+                    <label className="input-group">
+                      <span>Frase de status</span>
+                      <input
+                        value={profile.headline}
+                        onChange={(event) => updateProfileField("headline", event.target.value)}
+                        type="text"
+                        placeholder="Ex: Atendimento com hora marcada"
+                      />
+                    </label>
+
+                    <label className="input-group">
                       <span>Localizacao publica</span>
                       <input
                         value={profile.location}
                         onChange={(event) => updateProfileField("location", event.target.value)}
                         type="text"
                         placeholder="Cidade ou regiao"
+                      />
+                    </label>
+
+                    <label className="input-group">
+                      <span>Bairro ou regiao</span>
+                      <input
+                        value={profile.neighborhood}
+                        onChange={(event) => updateProfileField("neighborhood", event.target.value)}
+                        type="text"
+                        placeholder="Ex: Centro"
                       />
                     </label>
 
@@ -539,6 +636,83 @@ export default function Dashboard() {
                       <input value={profile.is_online ? "Online" : "Offline"} type="text" readOnly />
                     </label>
                   </div>
+                  </fieldset>
+
+                  <fieldset className="dashboard-fieldset">
+                    <legend>Valores e local</legend>
+                    <div className="dashboard-form-grid">
+                      <label className="input-group">
+                        <span>Valor 15 min</span>
+                        <input value={profile.price_15} onChange={(event) => updateProfileField("price_15", event.target.value)} type="text" placeholder="Ex: R$ 350" />
+                      </label>
+                      <label className="input-group">
+                        <span>Valor 30 min</span>
+                        <input value={profile.price_30} onChange={(event) => updateProfileField("price_30", event.target.value)} type="text" placeholder="Ex: R$ 500" />
+                      </label>
+                      <label className="input-group">
+                        <span>Valor 1 hora</span>
+                        <input value={profile.price_60} onChange={(event) => updateProfileField("price_60", event.target.value)} type="text" placeholder="Ex: R$ 800" />
+                      </label>
+                      <label className="input-group">
+                        <span>Pernoite</span>
+                        <input value={profile.overnight_price} onChange={(event) => updateProfileField("overnight_price", event.target.value)} type="text" placeholder="Ex: Sob consulta" />
+                      </label>
+                      <label className="input-group">
+                        <span>Local de atendimento</span>
+                        <select value={profile.has_place} onChange={(event) => updateProfileField("has_place", event.target.value)}>
+                          <option value="nao_informado">Nao informado</option>
+                          <option value="com_local">Com local</option>
+                          <option value="sem_local">Sem local</option>
+                          <option value="hotel_motel">Hotel ou motel</option>
+                          <option value="a_combinar">A combinar</option>
+                        </select>
+                      </label>
+                      <label className="input-group">
+                        <span>Atende</span>
+                        <input value={profile.serves} onChange={(event) => updateProfileField("serves", event.target.value)} type="text" placeholder="Ex: homens, mulheres e casais" />
+                      </label>
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="dashboard-fieldset">
+                    <legend>Atendimento e detalhes</legend>
+                    <div className="dashboard-form-grid">
+                      <label className="input-group input-group--wide">
+                        <span>Horarios de atendimento</span>
+                        <textarea value={profile.availability} onChange={(event) => updateProfileField("availability", event.target.value)} rows={3} placeholder="Ex: Segunda a sabado, das 10h as 22h" />
+                      </label>
+                      <label className="input-group input-group--wide">
+                        <span>Formas de pagamento</span>
+                        <textarea value={profile.payment_methods} onChange={(event) => updateProfileField("payment_methods", event.target.value)} rows={3} placeholder="Ex: Pix, dinheiro, cartao" />
+                      </label>
+                      <label className="input-group input-group--wide">
+                        <span>O que faz</span>
+                        <textarea value={profile.services} onChange={(event) => updateProfileField("services", event.target.value)} rows={4} placeholder="Liste os servicos, experiencias e modalidades oferecidas" />
+                      </label>
+                      <label className="input-group input-group--wide">
+                        <span>Diferenciais</span>
+                        <textarea value={profile.specialties} onChange={(event) => updateProfileField("specialties", event.target.value)} rows={3} placeholder="Ex: massagem, jantar, viagem, atendimento premium" />
+                      </label>
+                      <label className="input-group input-group--wide">
+                        <span>Limites e restricoes</span>
+                        <textarea value={profile.restrictions} onChange={(event) => updateProfileField("restrictions", event.target.value)} rows={3} placeholder="Informe o que nao atende ou condicoes importantes" />
+                      </label>
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="dashboard-fieldset">
+                    <legend>Aparencia e idiomas</legend>
+                    <div className="dashboard-form-grid">
+                      <label className="input-group input-group--wide">
+                        <span>Caracteristicas fisicas</span>
+                        <textarea value={profile.appearance} onChange={(event) => updateProfileField("appearance", event.target.value)} rows={3} placeholder="Ex: altura, cabelo, olhos, corpo, tatuagens" />
+                      </label>
+                      <label className="input-group input-group--wide">
+                        <span>Idiomas</span>
+                        <input value={profile.languages} onChange={(event) => updateProfileField("languages", event.target.value)} type="text" placeholder="Ex: Portugues, ingles, espanhol" />
+                      </label>
+                    </div>
+                  </fieldset>
 
                   <label className="input-group input-group--wide">
                     <span>Descricao publica</span>
