@@ -15,6 +15,8 @@ export default function Page() {
               <button className="gallery-zoom" type="button" aria-label="Ampliar mÃ­dia selecionada">
                 <img id="profile-gallery-main" src="assets/profile-hero.webp" alt="Foto principal de Rafael Prado" />
               </button>
+              <button className="gallery-nav gallery-nav--prev" type="button" aria-label="Foto anterior">‹</button>
+              <button className="gallery-nav gallery-nav--next" type="button" aria-label="Próxima foto">›</button>
               <span className="approval-badge">Verificado</span>
               <span className="media-counter">1 / 6</span>
             </div>

@@ -15,7 +15,7 @@ export default function Cobranca() {
       badge: null,
       features: ["Perfil listado", "Baixa visibilidade"],
       buttonLabel: "Cadastrar Básico",
-      buttonClass: "button--muted",
+      buttonClass: "button--primary",
     },
     {
       name: "Premium",
@@ -23,7 +23,7 @@ export default function Cobranca() {
       badge: null,
       features: ["Perfil em destaque", "Mais visualizações", "Prioridade na busca"],
       buttonLabel: "Cadastrar Premium",
-      buttonClass: "button--muted",
+      buttonClass: "button--primary",
     },
     {
       name: "Top Privê",
@@ -92,7 +92,7 @@ export default function Cobranca() {
                   <li key={idx} style={{ marginBottom: "0.8rem", fontSize: "1.05rem" }}>{feat}</li>
                 ))}
               </ul>
-              <Link href={planHref(plan.name)} className={`button ${plan.buttonClass} plan__button`} style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }}>
+              <Link href={planHref(plan.name)} className={`button ${plan.buttonClass} plan__button`} style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }} onClick={(event) => event.stopPropagation()}>
                 {plan.buttonLabel}
               </Link>
             </article>

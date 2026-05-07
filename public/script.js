@@ -501,25 +501,42 @@ const galleryMain = document.querySelector("#profile-gallery-main");
 const galleryThumbs = document.querySelectorAll(".gallery-thumb[data-media]");
 const mediaCounter = document.querySelector(".media-counter");
 const galleryZoom = document.querySelector(".gallery-zoom");
+const galleryPrev = document.querySelector(".gallery-nav--prev");
+const galleryNext = document.querySelector(".gallery-nav--next");
 const imageLightbox = document.querySelector("#image-lightbox");
 const lightboxImage = imageLightbox?.querySelector("img");
 const lightboxClose = imageLightbox?.querySelector(".image-lightbox__close");
 
+function setGalleryIndex(index) {
+  if (!galleryMain || !galleryThumbs.length) {
+    return;
+  }
+
+  const normalizedIndex = (index + galleryThumbs.length) % galleryThumbs.length;
+  const thumb = galleryThumbs[normalizedIndex];
+
+  galleryThumbs.forEach((item) => item.classList.remove("is-active"));
+  thumb.classList.add("is-active");
+  galleryMain.src = thumb.dataset.media;
+  galleryMain.alt = thumb.dataset.alt || "MÃ­dia do perfil";
+
+  if (mediaCounter) {
+    mediaCounter.textContent = `${normalizedIndex + 1} / ${galleryThumbs.length}`;
+  }
+}
+
 galleryThumbs.forEach((thumb, index) => {
-  thumb.addEventListener("click", () => {
-    if (!galleryMain) {
-      return;
-    }
+  thumb.addEventListener("click", () => setGalleryIndex(index));
+});
 
-    galleryThumbs.forEach((item) => item.classList.remove("is-active"));
-    thumb.classList.add("is-active");
-    galleryMain.src = thumb.dataset.media;
-    galleryMain.alt = thumb.dataset.alt || "MÃ­dia do perfil";
+galleryPrev?.addEventListener("click", () => {
+  const currentIndex = Array.from(galleryThumbs).findIndex((thumb) => thumb.classList.contains("is-active"));
+  setGalleryIndex(currentIndex - 1);
+});
 
-    if (mediaCounter) {
-      mediaCounter.textContent = `${index + 1} / ${galleryThumbs.length}`;
-    }
-  });
+galleryNext?.addEventListener("click", () => {
+  const currentIndex = Array.from(galleryThumbs).findIndex((thumb) => thumb.classList.contains("is-active"));
+  setGalleryIndex(currentIndex + 1);
 });
 
 function closeLightbox() {
