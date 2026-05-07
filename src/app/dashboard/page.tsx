@@ -48,6 +48,32 @@ type ProfileForm = {
   user_document_name: string | null;
 };
 
+const profileTextFields: Array<keyof Omit<ProfileForm, "is_online" | "profile_approval_status" | "user_document_path" | "user_document_name">> = [
+  "name",
+  "type",
+  "whatsapp",
+  "location",
+  "state_uf",
+  "headline",
+  "age",
+  "neighborhood",
+  "price_15",
+  "price_30",
+  "price_60",
+  "overnight_price",
+  "serves",
+  "has_place",
+  "availability",
+  "payment_methods",
+  "services",
+  "specialties",
+  "restrictions",
+  "appearance",
+  "languages",
+  "description",
+  "active_plan",
+];
+
 type ProfileMedia = {
   id: string;
   file_name: string | null;
@@ -57,6 +83,8 @@ type ProfileMedia = {
   approval_status: ApprovalStatus;
   created_at: string | null;
 };
+
+type ProfileRow = Partial<Record<keyof ProfileForm, unknown>>;
 
 const emptyProfile: ProfileForm = {
   name: "",
@@ -150,6 +178,25 @@ const categoryGuides = {
     services: "Destaque estilo, documento verificado, local, experiencias e atendimento completo.",
   },
 };
+
+function normalizeProfileForm(profileData: ProfileRow): ProfileForm {
+  const normalizedProfile: ProfileForm = {
+    ...emptyProfile,
+    is_online: typeof profileData.is_online === "boolean" ? profileData.is_online : emptyProfile.is_online,
+    profile_approval_status: ["pending", "approved", "rejected"].includes(String(profileData.profile_approval_status))
+      ? (profileData.profile_approval_status as ApprovalStatus)
+      : emptyProfile.profile_approval_status,
+    user_document_path: typeof profileData.user_document_path === "string" ? profileData.user_document_path : null,
+    user_document_name: typeof profileData.user_document_name === "string" ? profileData.user_document_name : null,
+  };
+
+  profileTextFields.forEach((field) => {
+    const value = profileData[field];
+    normalizedProfile[field] = typeof value === "string" ? value : emptyProfile[field];
+  });
+
+  return normalizedProfile;
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -284,12 +331,7 @@ export default function Dashboard() {
       }
 
       if (profileData) {
-        const loadedProfile = {
-          ...emptyProfile,
-          ...profileData,
-          active_plan: profileData.active_plan || emptyProfile.active_plan,
-          profile_approval_status: profileData.profile_approval_status || "pending",
-        } as ProfileForm;
+        const loadedProfile = normalizeProfileForm(profileData as ProfileRow);
 
         setProfile(loadedProfile);
         if (savedPlan && !storedPlan) {
