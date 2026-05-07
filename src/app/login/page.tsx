@@ -49,6 +49,33 @@ export default function Login() {
       return;
     }
 
+    const { data: subscriptionData } = await supabase
+      .from("subscriptions")
+      .select("status,plan,plan_key")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const subscriptionStatus = typeof subscriptionData?.status === "string" ? subscriptionData.status.toLowerCase() : "";
+    const hasPaidPlan = ["active", "paid", "approved", "current"].includes(subscriptionStatus);
+
+    if (hasPaidPlan) {
+      const planStorage = rememberMe ? localStorage : sessionStorage;
+      const otherPlanStorage = rememberMe ? sessionStorage : localStorage;
+      const subscriptionPlan =
+        typeof subscriptionData?.plan === "string"
+          ? subscriptionData.plan.trim()
+          : typeof subscriptionData?.plan_key === "string"
+            ? subscriptionData.plan_key.trim()
+            : "paid";
+
+      otherPlanStorage.removeItem("hasActivePlan");
+      planStorage.setItem("hasActivePlan", subscriptionPlan || "paid");
+      router.push("/dashboard");
+      return;
+    }
+
     const trialKey = `trial_start_${userId}`;
 
     // Se é o primeiro login, registra o início do trial agora
@@ -57,17 +84,21 @@ export default function Login() {
     }
 
     // Verifica se ainda está no trial
-    const trialStart = localStorage.getItem(trialKey)!;
+    const trialStart = data.user.created_at || localStorage.getItem(trialKey)!;
     const startDate = new Date(trialStart);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays < TRIAL_DAYS) {
-      localStorage.setItem("hasActivePlan", "trial");
+    if (Number.isFinite(diffDays) && diffDays < TRIAL_DAYS) {
+      const planStorage = rememberMe ? localStorage : sessionStorage;
+      const otherPlanStorage = rememberMe ? sessionStorage : localStorage;
+      otherPlanStorage.removeItem("hasActivePlan");
+      planStorage.setItem("hasActivePlan", "trial");
       router.push("/dashboard");
     } else {
       // Trial expirado — precisa escolher um plano
       localStorage.removeItem("hasActivePlan");
+      sessionStorage.removeItem("hasActivePlan");
       router.push("/cobranca");
     }
   };

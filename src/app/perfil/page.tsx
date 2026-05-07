@@ -48,6 +48,14 @@ const catalogHrefByType: Record<string, string> = {
   trans: "/travestis",
 };
 
+const placeLabels: Record<string, string> = {
+  nao_informado: "Não informado",
+  com_local: "Com local",
+  sem_local: "Sem local",
+  hotel_motel: "Hotel ou motel",
+  a_combinar: "A combinar",
+};
+
 const formatList = (value: string | null) => value?.split(",").map((item) => item.trim()).filter(Boolean) || [];
 
 export default function PerfilPage() {
@@ -62,7 +70,7 @@ export default function PerfilPage() {
       const profileId = new URLSearchParams(window.location.search).get("id");
 
       if (!profileId) {
-        setMessage("Perfil nao informado.");
+        setMessage("Perfil não informado.");
         setLoading(false);
         return;
       }
@@ -75,7 +83,7 @@ export default function PerfilPage() {
         .maybeSingle();
 
       if (profileError || !profileData) {
-        setMessage("Perfil indisponivel ou aguardando aceite.");
+        setMessage("Perfil indisponível ou aguardando aceite.");
         setLoading(false);
         return;
       }
@@ -128,10 +136,10 @@ export default function PerfilPage() {
       <header className="app-header">
         <Link className="brand" href="/">
           <span className="brand__mark">DP</span>
-          <span>Delirio Prive</span>
+          <span>Delírio Privê</span>
         </Link>
-        <nav className="app-nav" aria-label="Navegacao">
-          <Link href="/">Inicio</Link>
+        <nav className="app-nav" aria-label="Navegação">
+          <Link href="/">Início</Link>
           <Link href="/mulheres">Mulheres</Link>
           <Link href="/homens">Homens</Link>
           <Link href="/travestis">Trans</Link>
@@ -146,9 +154,9 @@ export default function PerfilPage() {
           </section>
         ) : !profile ? (
           <section className="empty-state">
-            <h1>Perfil indisponivel</h1>
+            <h1>Perfil indisponível</h1>
             <p>{message}</p>
-            <Link className="button button--primary" href="/mulheres">Voltar ao catalogo</Link>
+            <Link className="button button--primary" href="/mulheres">Voltar ao catálogo</Link>
           </section>
         ) : (
           <>
@@ -161,7 +169,7 @@ export default function PerfilPage() {
                     type="button"
                     onClick={showNextPhoto}
                     disabled={photos.length <= 1}
-                    aria-label={photos.length > 1 ? "Abrir proxima foto" : "Foto principal"}
+                    aria-label={photos.length > 1 ? "Abrir próxima foto" : "Foto principal"}
                     style={selectedPhoto ? { "--gallery-photo": `url("${selectedPhoto}")` } as React.CSSProperties : undefined}
                   >
                     {selectedPhoto ? (
@@ -175,7 +183,7 @@ export default function PerfilPage() {
                       <button className="gallery-nav gallery-nav--prev" type="button" onClick={showPreviousPhoto} aria-label="Foto anterior">
                         ‹
                       </button>
-                      <button className="gallery-nav gallery-nav--next" type="button" onClick={showNextPhoto} aria-label="Proxima foto">
+                      <button className="gallery-nav gallery-nav--next" type="button" onClick={showNextPhoto} aria-label="Próxima foto">
                         ›
                       </button>
                     </>
@@ -207,8 +215,8 @@ export default function PerfilPage() {
                 {profile.headline && <p className="profile-lead">{profile.headline}</p>}
                 <dl className="primary-info-grid">
                   <div>
-                    <dt>Localizacao</dt>
-                    <dd>{[profile.neighborhood, profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Nao informada"}</dd>
+                    <dt>Localização</dt>
+                    <dd>{[profile.neighborhood, profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Não informada"}</dd>
                   </div>
                   <div>
                     <dt>Status</dt>
@@ -216,11 +224,11 @@ export default function PerfilPage() {
                   </div>
                   <div>
                     <dt>Atende</dt>
-                    <dd>{profile.serves || "Nao informado"}</dd>
+                    <dd>{profile.serves || "Não informado"}</dd>
                   </div>
                   <div>
                     <dt>Local</dt>
-                    <dd>{profile.has_place || "Nao informado"}</dd>
+                    <dd>{profile.has_place ? placeLabels[profile.has_place] || profile.has_place : "Não informado"}</dd>
                   </div>
                 </dl>
                 {profile.whatsapp && (
@@ -233,9 +241,9 @@ export default function PerfilPage() {
 
             <section className="profile-content-grid profile-wide-section">
               <article className="profile-card-shell description-section">
-                <span className="section-kicker">Descricao</span>
+                <span className="section-kicker">Descrição</span>
                 <h2>Sobre o perfil</h2>
-                <p>{profile.description || "Descricao ainda nao informada."}</p>
+                <p>{profile.description || "Descrição ainda não informada."}</p>
               </article>
 
               <article className="profile-card-shell">
@@ -265,14 +273,14 @@ export default function PerfilPage() {
                 <span className="section-kicker">Disponibilidade</span>
                 <h2>Combinados</h2>
                 <dl className="detail-grid">
-                  <div><dt>Horarios</dt><dd>{profile.availability || "Nao informado"}</dd></div>
-                  <div><dt>Pagamento</dt><dd>{profile.payment_methods || "Nao informado"}</dd></div>
-                  <div><dt>Restricoes</dt><dd>{profile.restrictions || "Nao informado"}</dd></div>
+                  <div><dt>Horários</dt><dd>{profile.availability || "Não informado"}</dd></div>
+                  <div><dt>Pagamento</dt><dd>{profile.payment_methods || "Não informado"}</dd></div>
+                  <div><dt>Restrições</dt><dd>{profile.restrictions || "Não informado"}</dd></div>
                 </dl>
               </article>
             </section>
 
-            <Link className="button button--ghost profile-wide-section" href={backHref}>Voltar ao catalogo</Link>
+            <Link className="button button--ghost profile-wide-section" href={backHref}>Voltar ao catálogo</Link>
           </>
         )}
       </main>

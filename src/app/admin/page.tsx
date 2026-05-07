@@ -107,6 +107,10 @@ const pendingProfileDocuments = (profiles: Profile[]) => {
   return profiles.filter((profile) => profile.profile_approval_status === "pending" && profile.user_document_path);
 };
 
+const allProfileDocuments = (profiles: Profile[]) => {
+  return profiles.filter((profile) => profile.user_document_path);
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("aprovacoes");
@@ -356,6 +360,7 @@ export default function AdminDashboard() {
         <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", borderBottom: "1px solid rgba(245, 230, 200, 0.1)", paddingBottom: "1rem", overflowX: "auto" }}>
           {[
             { id: "aprovacoes", label: "Aprovação de Mídia" },
+            { id: "documentos", label: "Documentação" },
             { id: "perfis", label: "Gerenciar Perfis" },
             { id: "financeiro", label: "Visão Financeira" },
             { id: "parcerias", label: "Parcerias e Promoções" },
@@ -521,6 +526,46 @@ export default function AdminDashboard() {
                   )}
                 </section>
               </div>
+            </div>
+          )}
+
+          {!loading && activeTab === "documentos" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Documentação dos cadastrados</h2>
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                  {allProfileDocuments(profiles).length} documento(s) enviado(s)
+                </span>
+              </div>
+              {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
+
+              {profiles.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)" }}>Nenhum perfil encontrado.</p>
+              ) : (
+                <div style={{ display: "grid", gap: "0.85rem" }}>
+                  {profiles.map((profile) => (
+                    <article key={profile.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "1rem", alignItems: "center", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
+                        <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
+                          {profile.type || "Categoria nao informada"} - {profile.location || "Localizacao nao informada"}
+                        </p>
+                        <p style={{ color: profile.user_document_path ? "#4ade80" : "#f87171", margin: "0.35rem 0 0", fontWeight: 800 }}>
+                          {profile.user_document_name || (profile.user_document_path ? "Documento enviado" : "Sem documentacao")}
+                        </p>
+                      </div>
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        disabled={!profile.user_document_path}
+                        onClick={() => viewUserDocument(profile.user_document_path)}
+                      >
+                        Visualizar
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

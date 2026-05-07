@@ -15,9 +15,9 @@
     toast.className = `toast toast--${type}`;
     toast.setAttribute('role', 'alert');
     
-    let icon = 'â„¹ï¸';
-    if (type === 'success') icon = 'âœ“';
-    if (type === 'error') icon = 'âœ•';
+    let icon = 'i';
+    if (type === 'success') icon = 'OK';
+    if (type === 'error') icon = '!';
 
     toast.innerHTML = `
       <div class="toast-icon">${icon}</div>
@@ -547,14 +547,14 @@ document.addEventListener("keydown", (event) => {
 });
 
 // ==========================================================================
-// ProteÃ§Ã£o e Privacidade (Luxo)
+// Proteção e Privacidade
 // ==========================================================================
 
-// 1. Anti-Scraping / ProteÃ§Ã£o de MÃ­dia
+// 1. Anti-Scraping / Proteção de Mídia
 document.addEventListener('contextmenu', (e) => {
   if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
     e.preventDefault();
-    Toast.show('ProteÃ§Ã£o de privacidade ativa. Download nÃ£o permitido.', 'info');
+    Toast.show('Proteção de privacidade ativa. Download não permitido.', 'info');
   }
 });
 

@@ -120,22 +120,30 @@ const emptyProfile: ProfileForm = {
 const approvalCopy = {
   pending: {
     title: "Aguardando aceite",
-    description: "Seu perfil fica fora do catalogo ate a aprovacao da administracao.",
+    description: "Seu perfil fica fora do catálogo até a aprovação da administração.",
   },
   approved: {
     title: "Perfil aprovado",
-    description: "Seu cadastro esta liberado para aparecer no catalogo.",
+    description: "Seu cadastro está liberado para aparecer no catálogo.",
   },
   rejected: {
     title: "Ajustes solicitados",
-    description: "Revise as informacoes e envie novamente para avaliacao.",
+    description: "Revise as informações e envie novamente para avaliação.",
   },
 };
 
 const mediaStatusCopy = {
-  pending: "Em analise",
+  pending: "Em análise",
   approved: "Aprovada",
   rejected: "Recusada",
+};
+
+const placeLabels: Record<string, string> = {
+  nao_informado: "Não informado",
+  com_local: "Com local",
+  sem_local: "Sem local",
+  hotel_motel: "Hotel ou motel",
+  a_combinar: "A combinar",
 };
 
 const BRAZIL_UFS = [
@@ -143,14 +151,24 @@ const BRAZIL_UFS = [
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
 
+const getTrialDaysLeft = (createdAt: string | undefined) => {
+  if (!createdAt) return 0;
+
+  const createdDate = new Date(createdAt);
+  if (Number.isNaN(createdDate.getTime())) return 0;
+
+  const diffDays = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, TRIAL_DAYS - diffDays);
+};
+
 const predefinedOptions = {
   serves: ["Homens", "Mulheres", "Casais", "Trans", "Atendimento social", "Viagens"],
   has_place: ["Com local", "Sem local", "Hotel ou motel", "A combinar"],
   availability: ["Manha", "Tarde", "Noite", "Madrugada", "Segunda a sexta", "Fim de semana", "24 horas", "Com hora marcada"],
-  payment_methods: ["Pix", "Dinheiro", "Cartao de credito", "Cartao de debito", "Transferencia", "Sinal antecipado"],
+  payment_methods: ["Pix", "Dinheiro", "Cartão de crédito", "Cartão de débito", "Transferência", "Sinal antecipado"],
   services: ["Massagem", "Jantar", "Encontro social", "Viagem", "Atendimento virtual", "Fantasias", "Namoradinha", "Premium"],
-  specialties: ["Discricao", "Local proprio", "Atendimento em hotel", "Atendimento para casais", "Experiencia luxo", "Roleplay"],
-  languages: ["Portugues", "Ingles", "Espanhol", "Frances", "Italiano"],
+  specialties: ["Discrição", "Local próprio", "Atendimento em hotel", "Atendimento para casais", "Experiência luxo", "Roleplay"],
+  languages: ["Português", "Inglês", "Espanhol", "Francês", "Italiano"],
 };
 
 const categoryGuides = {
@@ -304,27 +322,40 @@ export default function Dashboard() {
         .eq("id", user.id)
         .maybeSingle();
 
+      const { data: subscriptionData } = await supabase
+        .from("subscriptions")
+        .select("status,plan,plan_key")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       const storedPlan = localStorage.getItem("hasActivePlan") || sessionStorage.getItem("hasActivePlan");
-      const savedPlan = typeof profileData?.active_plan === "string" ? profileData.active_plan.trim() : "";
-      let hasDashboardAccess = Boolean(storedPlan || savedPlan);
+      const planStorage = localStorage.getItem("delirioSessionPersistence") === "session" ? sessionStorage : localStorage;
+      const subscriptionStatus = typeof subscriptionData?.status === "string" ? subscriptionData.status.toLowerCase() : "";
+      const hasPaidPlan = ["active", "paid", "approved", "current"].includes(subscriptionStatus);
+      const subscriptionPlan =
+        typeof subscriptionData?.plan === "string"
+          ? subscriptionData.plan.trim()
+          : typeof subscriptionData?.plan_key === "string"
+            ? subscriptionData.plan_key.trim()
+            : "";
+      const profilePlan = typeof profileData?.active_plan === "string" ? profileData.active_plan.trim() : "";
+      const savedPlan = hasPaidPlan ? subscriptionPlan || profilePlan : "";
+      const daysLeft = getTrialDaysLeft(user.created_at);
+      const hasActiveTrial = daysLeft > 0;
+      let hasDashboardAccess = Boolean(savedPlan || hasActiveTrial);
 
-      if (storedPlan === "trial") {
-        const trialKey = `trial_start_${user.id}`;
-        const trialStart = localStorage.getItem(trialKey);
-
-        if (trialStart) {
-          const diffDays = Math.floor((Date.now() - new Date(trialStart).getTime()) / (1000 * 60 * 60 * 24));
-          const daysLeft = TRIAL_DAYS - diffDays;
-
-          if (daysLeft <= 0) {
-            localStorage.removeItem("hasActivePlan");
-            sessionStorage.removeItem("hasActivePlan");
-            hasDashboardAccess = Boolean(savedPlan);
-          } else {
-            setIsTrial(true);
-            setTrialDaysLeft(daysLeft);
-          }
-        }
+      if (hasActiveTrial && !savedPlan) {
+        setIsTrial(true);
+        setTrialDaysLeft(daysLeft);
+        localStorage.removeItem("hasActivePlan");
+        sessionStorage.removeItem("hasActivePlan");
+        planStorage.setItem("hasActivePlan", "trial");
+      } else if (storedPlan === "trial") {
+        localStorage.removeItem("hasActivePlan");
+        sessionStorage.removeItem("hasActivePlan");
+        hasDashboardAccess = Boolean(savedPlan);
       }
 
       if (!hasDashboardAccess) {
@@ -337,7 +368,7 @@ export default function Dashboard() {
 
         setProfile(loadedProfile);
         if (savedPlan && !storedPlan) {
-          localStorage.setItem("hasActivePlan", savedPlan);
+          planStorage.setItem("hasActivePlan", savedPlan);
         }
         await loadDocumentUrl(loadedProfile.user_document_path);
       }
@@ -424,7 +455,7 @@ export default function Dashboard() {
     if (!userId) return;
 
     setSaving(true);
-    setStatusMessage("Enviando perfil para aprovacao...");
+    setStatusMessage("Enviando perfil para aprovação...");
 
     const { error } = await supabase.from("profiles").upsert({
       ...buildProfilePayload(),
@@ -441,7 +472,7 @@ export default function Dashboard() {
     }
 
     setProfile((current) => ({ ...current, profile_approval_status: "pending" }));
-    setStatusMessage("Perfil salvo e enviado para aceite da administracao.");
+    setStatusMessage("Perfil salvo e enviado para aceite da administração.");
   };
 
   const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>, isCover = false) => {
@@ -468,7 +499,7 @@ export default function Dashboard() {
     }
 
     setUploadingMedia(true);
-    setStatusMessage(isCover ? "Enviando capa para aprovacao..." : "Enviando fotos para aprovacao...");
+    setStatusMessage(isCover ? "Enviando capa para aprovação..." : "Enviando fotos para aprovação...");
 
     const rows = [];
 
@@ -508,11 +539,11 @@ export default function Dashboard() {
     event.target.value = "";
 
     if (error) {
-      setStatusMessage(`Fotos enviadas, mas nao entraram na fila: ${error.message}`);
+      setStatusMessage(`Fotos enviadas, mas não entraram na fila: ${error.message}`);
       return;
     }
 
-    setStatusMessage(isCover ? "Capa enviada para aprovacao." : "Fotos enviadas para aprovacao.");
+    setStatusMessage(isCover ? "Capa enviada para aprovação." : "Fotos enviadas para aprovação.");
     await loadProfileMedia(userId);
   };
 
@@ -591,7 +622,7 @@ export default function Dashboard() {
     event.target.value = "";
 
     if (updateError) {
-      setStatusMessage(`Documento enviado, mas nao foi vinculado ao perfil: ${updateError.message}`);
+      setStatusMessage(`Documento enviado, mas não foi vinculado ao perfil: ${updateError.message}`);
       return;
     }
 
@@ -602,7 +633,7 @@ export default function Dashboard() {
       profile_approval_status: "pending",
     }));
     await loadDocumentUrl(documentPath);
-    setStatusMessage("Documento anexado e enviado para analise.");
+    setStatusMessage("Documento anexado e enviado para análise.");
   };
 
   return (
@@ -610,10 +641,10 @@ export default function Dashboard() {
       <header className="app-header">
         <Link className="brand" href="/">
           <span className="brand__mark">DP</span>
-          <span>Delirio Prive</span>
+          <span>Delírio Privê</span>
         </Link>
-        <nav className="app-nav" aria-label="Navegacao">
-          <Link href="/">Inicio</Link>
+        <nav className="app-nav" aria-label="Navegação">
+          <Link href="/">Início</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
           <button className="nav-button" type="button" onClick={handleLogout}>Sair</button>
@@ -706,7 +737,7 @@ export default function Dashboard() {
                         <span className="tag tag--premium">{currentPlan.displayName}</span>
                         <h2>{profile.name || "Nome artistico"}</h2>
                         {profile.headline && <p>{profile.headline}</p>}
-                        <p>{profile.location || "Localizacao"}</p>
+                        <p>{profile.location || "Localização"}</p>
                         {profile.description && <p>{profile.description}</p>}
                         <div className="trust-row">
                           {profile.is_online && <span>Online</span>}
@@ -718,19 +749,19 @@ export default function Dashboard() {
                     <div className="dashboard-facts">
                       <article>
                         <strong>Categoria</strong>
-                        <p>{profile.type || "Nao informada"}</p>
+                        <p>{profile.type || "Não informada"}</p>
                       </article>
                       <article>
                         <strong>WhatsApp</strong>
-                        <p>{profile.whatsapp || "Nao informado"}</p>
+                        <p>{profile.whatsapp || "Não informado"}</p>
                       </article>
                       <article>
                         <strong>Valor inicial</strong>
-                        <p>{profile.price_15 || profile.price_30 || profile.price_60 || "Nao informado"}</p>
+                        <p>{profile.price_15 || profile.price_30 || profile.price_60 || "Não informado"}</p>
                       </article>
                       <article>
                         <strong>Atende</strong>
-                        <p>{profile.serves || "Nao informado"}</p>
+                        <p>{profile.serves || "Não informado"}</p>
                       </article>
                       <article>
                         <strong>Fotos</strong>
@@ -746,9 +777,9 @@ export default function Dashboard() {
               {activeTab === "editar" && (
                 <form className="model-profile-form dashboard-stack" onSubmit={handleSaveProfile}>
                   <div>
-                    <span className="section-kicker">Perfil publico</span>
-                    <h2>Informacoes exibidas no perfil</h2>
-                    <p>Preencha os dados principais, valores, atendimento e preferencias que formam a pagina publica do perfil.</p>
+                    <span className="section-kicker">Perfil público</span>
+                    <h2>Informações exibidas no perfil</h2>
+                    <p>Preencha os dados principais, valores, atendimento e preferências que formam a página pública do perfil.</p>
                   </div>
 
                   <section className="dashboard-profile-guide">
@@ -767,7 +798,7 @@ export default function Dashboard() {
                         <p>{categoryGuide.serves}</p>
                       </article>
                       <article>
-                        <strong>Localizacao</strong>
+                        <strong>Localização</strong>
                         <p>Bairro + cidade/UF + se tem local</p>
                       </article>
                     </div>
@@ -816,7 +847,7 @@ export default function Dashboard() {
                     </label>
 
                     <label className="input-group">
-                      <span>Localizacao publica</span>
+                      <span>Localização pública</span>
                       <input
                         value={profile.location}
                         onChange={(event) => updateProfileField("location", event.target.value)}
@@ -846,7 +877,7 @@ export default function Dashboard() {
                     </label>
 
                     <label className="input-group">
-                      <span>WhatsApp publico</span>
+                      <span>WhatsApp público</span>
                       <input
                         value={profile.whatsapp}
                         onChange={(event) => updateProfileField("whatsapp", event.target.value)}
@@ -889,7 +920,7 @@ export default function Dashboard() {
                       <label className="input-group">
                         <span>Local de atendimento</span>
                         <select value={profile.has_place} onChange={(event) => updateProfileField("has_place", event.target.value)}>
-                          <option value="nao_informado">Nao informado</option>
+                          <option value="nao_informado">Não informado</option>
                           <option value="com_local">Com local</option>
                           <option value="sem_local">Sem local</option>
                           <option value="hotel_motel">Hotel ou motel</option>
@@ -919,7 +950,7 @@ export default function Dashboard() {
                     <legend>Atendimento e detalhes</legend>
                     <div className="dashboard-form-grid">
                       <label className="input-group input-group--wide">
-                        <span>Horarios de atendimento</span>
+                        <span>Horários de atendimento</span>
                         <textarea value={profile.availability} onChange={(event) => updateProfileField("availability", event.target.value)} rows={3} placeholder="Ex: Segunda a sabado, das 10h as 22h" />
                         <div className="quick-options">
                           {predefinedOptions.availability.map((option) => (
@@ -984,7 +1015,7 @@ export default function Dashboard() {
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Limites e restricoes</span>
-                        <textarea value={profile.restrictions} onChange={(event) => updateProfileField("restrictions", event.target.value)} rows={3} placeholder="Informe o que nao atende ou condicoes importantes" />
+                        <textarea value={profile.restrictions} onChange={(event) => updateProfileField("restrictions", event.target.value)} rows={3} placeholder="Informe o que não atende ou condições importantes" />
                       </label>
                     </div>
                   </fieldset>
@@ -998,7 +1029,7 @@ export default function Dashboard() {
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Idiomas</span>
-                        <input value={profile.languages} onChange={(event) => updateProfileField("languages", event.target.value)} type="text" placeholder="Ex: Portugues, ingles, espanhol" />
+                        <input value={profile.languages} onChange={(event) => updateProfileField("languages", event.target.value)} type="text" placeholder="Ex: Português, inglês, espanhol" />
                         <div className="quick-options">
                           {predefinedOptions.languages.map((option) => (
                             <button
@@ -1016,7 +1047,7 @@ export default function Dashboard() {
                   </fieldset>
 
                   <label className="input-group input-group--wide">
-                    <span>Descricao publica</span>
+                    <span>Descrição pública</span>
                     <textarea
                       value={profile.description}
                       onChange={(event) => updateProfileField("description", event.target.value)}
@@ -1039,8 +1070,8 @@ export default function Dashboard() {
                   <div className="dashboard-section-header">
                     <div>
                       <span className="section-kicker">Fotos</span>
-                      <h2>Fotos para aprovacao</h2>
-                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}. A capa tambem passa por aprovacao.</p>
+                      <h2>Fotos para aprovação</h2>
+                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}. A capa também passa por aprovação.</p>
                     </div>
                     <div className="media-upload-actions">
                       <label className="button button--ghost">
@@ -1070,7 +1101,7 @@ export default function Dashboard() {
                   <div className="media-approval-grid">
                     {mediaItems.length === 0 ? (
                       <section className="empty-state empty-state--compact">
-                        <p>Nenhuma foto enviada para aprovacao.</p>
+                        <p>Nenhuma foto enviada para aprovação.</p>
                       </section>
                     ) : (
                       mediaItems.map((item) => (

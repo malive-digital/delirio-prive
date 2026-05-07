@@ -258,9 +258,15 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
               <section className="profile-grid" aria-label={`Perfis de ${title}`}>
                 {visibleProfiles.map((profile) => {
                   const plan = getPlanConfig(profile.active_plan || "Basico");
+                  const planSizeClass =
+                    plan.key === "Top Prive"
+                      ? "profile-card--catalog-top"
+                      : plan.key === "Premium"
+                        ? "profile-card--catalog-premium"
+                        : "profile-card--catalog-basic";
 
                   return (
-                    <Link className="profile-card profile-card--link" href={`/perfil?id=${profile.id}`} key={profile.id}>
+                    <Link className={`profile-card profile-card--link ${planSizeClass}`} href={`/perfil?id=${profile.id}`} key={profile.id}>
                       <div
                         className="profile-card__media profile-card__media--one"
                         style={profile.media_url ? { backgroundImage: `linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)), url("${profile.media_url}")` } : undefined}
