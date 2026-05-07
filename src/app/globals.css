@@ -1057,7 +1057,9 @@ legend,
   color: var(--gold-primary);
 }
 
-.input-group input {
+.input-group input,
+.input-group select,
+.input-group textarea {
   width: 100%;
   min-height: 3.25rem;
   padding: 0.85rem 0.9rem;
@@ -1069,7 +1071,9 @@ legend,
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.input-group input:focus {
+.input-group input:focus,
+.input-group select:focus,
+.input-group textarea:focus {
   border-color: rgba(212, 175, 55, 0.72);
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
 }

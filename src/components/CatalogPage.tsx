@@ -37,7 +37,15 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
         .eq("profile_approval_status", "approved")
         .order("updated_at", { ascending: false });
 
-      setProfiles(data || []);
+      setProfiles(
+        (data || []).filter((profile) => {
+          const name = profile.name?.trim().toLowerCase();
+          const location = profile.location?.trim();
+          const genericNames = new Set(["modelo", "nova modelo", "perfil sem nome"]);
+
+          return Boolean(name) && !genericNames.has(name || "") && Boolean(location);
+        }),
+      );
       setLoading(false);
     };
 
