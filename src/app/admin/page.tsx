@@ -528,14 +528,16 @@ export default function AdminDashboard() {
 
               <div style={{ display: "grid", gap: "1.5rem" }}>
                 <section>
-                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Fotos aguardando aceite</h3>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Mídias aguardando aceite</h3>
                   {mediaItems.filter((item) => item.approval_status === "pending").length === 0 ? (
-                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhuma foto aguardando aceite.</p>
+                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhuma mídia aguardando aceite.</p>
                   ) : (
                     <div style={{ display: "grid", gap: "0.85rem" }}>
                       {mediaItems.filter((item) => item.approval_status === "pending").map((item) => (
                         <article key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
-                          {item.public_url ? (
+                          {item.media_type === "video" && item.public_url ? (
+                            <video src={item.public_url} style={{ width: "4.5rem", height: "4.5rem", objectFit: "cover", borderRadius: "0.45rem" }} muted />
+                          ) : item.public_url ? (
                             <img src={item.public_url} alt={item.file_name || "Foto enviada"} style={{ width: "4.5rem", height: "4.5rem", objectFit: "cover", borderRadius: "0.45rem" }} />
                           ) : (
                             <div style={{ width: "4.5rem", height: "4.5rem", borderRadius: "0.45rem", background: "rgba(245,230,200,0.08)" }} />
@@ -550,7 +552,7 @@ export default function AdminDashboard() {
                                 Foto de capa
                               </span>
                             )}
-                            <p style={{ color: "var(--text-secondary)", margin: "0.2rem 0 0", fontSize: "0.85rem" }}>{item.file_name || "Foto enviada"}</p>
+                            <p style={{ color: "var(--text-secondary)", margin: "0.2rem 0 0", fontSize: "0.85rem" }}>{item.file_name || (item.media_type === "video" ? "Vídeo enviado" : "Foto enviada")}</p>
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                             {item.public_url && (

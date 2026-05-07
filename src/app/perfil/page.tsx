@@ -40,6 +40,7 @@ type ProfileMedia = {
   public_url: string | null;
   storage_path: string | null;
   file_name: string | null;
+  media_type: "photo" | "video";
   is_cover: boolean | null;
 };
 
@@ -91,10 +92,9 @@ export default function PerfilPage() {
 
       const { data: mediaData } = await supabase
         .from("profile_media")
-        .select("id,public_url,storage_path,file_name,is_cover")
+        .select("id,public_url,storage_path,file_name,media_type,is_cover")
         .eq("profile_id", profileId)
         .eq("approval_status", "approved")
-        .eq("media_type", "photo")
         .order("is_cover", { ascending: false })
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
@@ -110,6 +110,14 @@ export default function PerfilPage() {
   const plan = getPlanConfig(profile?.active_plan || "Basico");
   const photos = useMemo(
     () => mediaItems
+      .filter((item) => item.media_type === "photo")
+      .map((item) => item.public_url || (item.storage_path ? supabase.storage.from("profile-media").getPublicUrl(item.storage_path).data.publicUrl : ""))
+      .filter(Boolean),
+    [mediaItems],
+  );
+  const videos = useMemo(
+    () => mediaItems
+      .filter((item) => item.media_type === "video")
       .map((item) => item.public_url || (item.storage_path ? supabase.storage.from("profile-media").getPublicUrl(item.storage_path).data.publicUrl : ""))
       .filter(Boolean),
     [mediaItems],
@@ -203,6 +211,13 @@ export default function PerfilPage() {
                       >
                         <img src={photo} alt={`${profile.name || "Perfil"} - foto ${index + 1}`} />
                       </button>
+                    ))}
+                  </div>
+                )}
+                {videos.length > 0 && (
+                  <div className="profile-video-list" aria-label="Vídeos aprovados">
+                    {videos.map((videoUrl, index) => (
+                      <video key={videoUrl} src={videoUrl} controls preload="metadata" aria-label={`Vídeo ${index + 1}`} />
                     ))}
                   </div>
                 )}

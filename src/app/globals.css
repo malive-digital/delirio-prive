@@ -2815,6 +2815,20 @@ body.is-switching-category .explore {
   font-weight: 700;
 }
 
+.profile-video-list {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+}
+
+.profile-video-list video {
+  width: 100%;
+  max-height: 24rem;
+  border: 1px solid rgba(245, 230, 200, 0.12);
+  border-radius: 0.85rem;
+  background: #050505;
+}
+
 .nav-button {
   border: 0;
   background: transparent;
@@ -3137,6 +3151,7 @@ body.is-switching-category .explore {
 }
 
 .media-approval-card img,
+.media-approval-card video,
 .media-approval-card > div:first-child {
   width: 100%;
   aspect-ratio: 4 / 5;

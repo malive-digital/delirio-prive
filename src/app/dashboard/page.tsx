@@ -7,6 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
 
 const TRIAL_DAYS = 7;
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 
 type DashboardTab = "resumo" | "editar" | "fotos" | "documento";
 
@@ -238,7 +242,9 @@ export default function Dashboard() {
   const approval = approvalCopy[profile.profile_approval_status];
   const trialPercent = trialDaysLeft === null ? 0 : Math.max(0, Math.min(100, (trialDaysLeft / TRIAL_DAYS) * 100));
   const usedPhotos = mediaItems.filter((item) => item.media_type === "photo" && item.approval_status !== "rejected").length;
+  const usedVideos = mediaItems.filter((item) => item.media_type === "video" && item.approval_status !== "rejected").length;
   const availablePhotos = Math.max(0, currentPlan.limits.photos - usedPhotos);
+  const availableVideos = Math.max(0, currentPlan.limits.videos - usedVideos);
 
   useEffect(() => {
     const syncTabFromUrl = () => {
@@ -413,6 +419,15 @@ export default function Dashboard() {
     };
   };
 
+  const ensureProfileExists = async () => {
+    const { error } = await supabase.from("profiles").upsert({
+      ...buildProfilePayload(),
+      updated_at: new Date().toISOString(),
+    });
+
+    return error;
+  };
+
   const updateProfileField = <T extends keyof ProfileForm>(field: T, value: ProfileForm[T]) => {
     setProfile((current) => ({ ...current, [field]: value }));
   };
@@ -480,9 +495,16 @@ export default function Dashboard() {
     const files = Array.from(event.target.files || []);
     if (!files.length || !userId) return;
 
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    const oversizedFile = files.find((file) => file.size > MAX_IMAGE_UPLOAD_BYTES);
+    if (oversizedFile) {
+      setStatusMessage(`O arquivo ${oversizedFile.name} passa de 10MB. Envie uma imagem menor.`);
+      event.target.value = "";
+      return;
+    }
+
+    const imageFiles = files.filter((file) => ALLOWED_IMAGE_TYPES.has(file.type));
     if (imageFiles.length !== files.length) {
-      setStatusMessage("Envie apenas fotos em formato de imagem.");
+      setStatusMessage("Envie fotos em JPG, PNG, WEBP ou GIF. HEIC/HEIF do celular precisa ser convertido antes.");
       event.target.value = "";
       return;
     }
@@ -501,6 +523,14 @@ export default function Dashboard() {
 
     setUploadingMedia(true);
     setStatusMessage(isCover ? "Enviando capa para aprovação..." : "Enviando fotos para aprovação...");
+
+    const profileError = await ensureProfileExists();
+    if (profileError) {
+      setUploadingMedia(false);
+      setStatusMessage(`Erro ao preparar perfil para envio: ${profileError.message}`);
+      event.target.value = "";
+      return;
+    }
 
     const rows = [];
 
@@ -545,6 +575,87 @@ export default function Dashboard() {
     }
 
     setStatusMessage(isCover ? "Capa enviada para aprovação." : "Fotos enviadas para aprovação.");
+    await loadProfileMedia(userId);
+  };
+
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length || !userId) return;
+
+    const oversizedFile = files.find((file) => file.size > MAX_VIDEO_UPLOAD_BYTES);
+    if (oversizedFile) {
+      setStatusMessage(`O vídeo ${oversizedFile.name} passa de 50MB. Envie um vídeo menor.`);
+      event.target.value = "";
+      return;
+    }
+
+    const videoFiles = files.filter((file) => ALLOWED_VIDEO_TYPES.has(file.type));
+    if (videoFiles.length !== files.length) {
+      setStatusMessage("Envie vídeos em MP4, WEBM ou MOV.");
+      event.target.value = "";
+      return;
+    }
+
+    if (videoFiles.length > availableVideos) {
+      setStatusMessage(`Seu plano permite mais ${availableVideos} vídeo(s) neste momento.`);
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingMedia(true);
+    setStatusMessage("Enviando vídeos para aprovação...");
+
+    const profileError = await ensureProfileExists();
+    if (profileError) {
+      setUploadingMedia(false);
+      setStatusMessage(`Erro ao preparar perfil para envio: ${profileError.message}`);
+      event.target.value = "";
+      return;
+    }
+
+    const rows = [];
+
+    for (const file of videoFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const storagePath = `${userId}/video-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("profile-media").upload(storagePath, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+      if (uploadError) {
+        setUploadingMedia(false);
+        setStatusMessage(`Erro ao enviar ${file.name}: ${uploadError.message}`);
+        event.target.value = "";
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from("profile-media").getPublicUrl(storagePath);
+      rows.push({
+        profile_id: userId,
+        user_id: userId,
+        file_name: file.name,
+        media_type: "video",
+        mime_type: file.type,
+        storage_path: storagePath,
+        public_url: urlData.publicUrl,
+        approval_status: "pending",
+        is_cover: false,
+        sort_order: 0,
+      });
+    }
+
+    const { error } = await supabase.from("profile_media").insert(rows);
+
+    setUploadingMedia(false);
+    event.target.value = "";
+
+    if (error) {
+      setStatusMessage(`Vídeos enviados, mas não entraram na fila: ${error.message}`);
+      return;
+    }
+
+    setStatusMessage("Vídeos enviados para aprovação.");
     await loadProfileMedia(userId);
   };
 
@@ -593,8 +704,22 @@ export default function Dashboard() {
       return;
     }
 
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setStatusMessage("O documento passa de 10MB. Envie um PDF menor.");
+      event.target.value = "";
+      return;
+    }
+
     setUploadingDocument(true);
     setStatusMessage("Enviando documento...");
+
+    const profileError = await ensureProfileExists();
+    if (profileError) {
+      setUploadingDocument(false);
+      setStatusMessage(`Erro ao preparar perfil para o documento: ${profileError.message}`);
+      event.target.value = "";
+      return;
+    }
 
     const documentPath = `${userId}/documento-${Date.now()}.pdf`;
     const { error: uploadError } = await supabase.storage.from("user-documents").upload(documentPath, file, {
@@ -605,6 +730,7 @@ export default function Dashboard() {
     if (uploadError) {
       setUploadingDocument(false);
       setStatusMessage(`Erro ao enviar documento: ${uploadError.message}`);
+      event.target.value = "";
       return;
     }
 
@@ -1070,9 +1196,9 @@ export default function Dashboard() {
                 <div className="dashboard-stack">
                   <div className="dashboard-section-header">
                     <div>
-                      <span className="section-kicker">Fotos</span>
-                      <h2>Fotos para aprovação</h2>
-                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}. A capa também passa por aprovação.</p>
+                      <span className="section-kicker">Mídia</span>
+                      <h2>Fotos e vídeos para aprovação</h2>
+                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos e {usedVideos}/{currentPlan.limits.videos} vídeos usados no plano {currentPlan.displayName}. A capa também passa por aprovação.</p>
                     </div>
                     <div className="media-upload-actions">
                       <label className="button button--ghost">
@@ -1096,21 +1222,41 @@ export default function Dashboard() {
                           style={{ display: "none" }}
                         />
                       </label>
+                      {currentPlan.limits.videos > 0 && (
+                        <label className={`button button--ghost ${availableVideos === 0 ? "is-disabled" : ""}`}>
+                          {uploadingMedia ? "Enviando..." : "Adicionar vídeos"}
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime"
+                            multiple
+                            onChange={handleVideoUpload}
+                            disabled={uploadingMedia || availableVideos === 0}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
 
                   <div className="media-approval-grid">
                     {mediaItems.length === 0 ? (
                       <section className="empty-state empty-state--compact">
-                        <p>Nenhuma foto enviada para aprovação.</p>
+                        <p>Nenhuma mídia enviada para aprovação.</p>
                       </section>
                     ) : (
                       mediaItems.map((item) => (
                         <article className="media-approval-card" key={item.id}>
-                          {item.public_url ? <img src={item.public_url} alt={item.file_name || "Foto enviada"} /> : <div />}
+                          {item.media_type === "video" && item.public_url ? (
+                            <video src={item.public_url} controls muted />
+                          ) : item.public_url ? (
+                            <img src={item.public_url} alt={item.file_name || "Foto enviada"} />
+                          ) : (
+                            <div />
+                          )}
                           <div>
-                            <strong>{item.file_name || "Foto enviada"}</strong>
+                            <strong>{item.file_name || (item.media_type === "video" ? "Vídeo enviado" : "Foto enviada")}</strong>
                             {item.is_cover && <span data-status="cover">Capa</span>}
+                            <span data-status="type">{item.media_type === "video" ? "Vídeo" : "Foto"}</span>
                             <span data-status={item.approval_status}>{mediaStatusCopy[item.approval_status]}</span>
                             <button
                               className="media-delete-button"
@@ -1118,7 +1264,7 @@ export default function Dashboard() {
                               onClick={() => handleMediaDelete(item)}
                               disabled={deletingMediaId === item.id}
                             >
-                              {deletingMediaId === item.id ? "Excluindo..." : "Excluir foto"}
+                              {deletingMediaId === item.id ? "Excluindo..." : `Excluir ${item.media_type === "video" ? "vídeo" : "foto"}`}
                             </button>
                           </div>
                         </article>
