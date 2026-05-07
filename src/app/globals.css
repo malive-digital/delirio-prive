@@ -390,7 +390,9 @@ body.is-logged-in .auth-only {
 }
 
 .category-entry--mulheres {
-  --category-art: url("/assets/profile-isadora.webp");
+  --category-art:
+    radial-gradient(ellipse at 55% 22%, rgba(245, 230, 200, 0.22), transparent 8rem),
+    linear-gradient(145deg, #0a0a0a, #4b0f1a 45%, #6e1e2b);
 }
 
 .category-entry--homens {
@@ -1472,19 +1474,19 @@ body.is-switching-category .explore {
 }
 
 .story-avatar--one {
-  --story-art: url("/assets/profile-valentina.webp");
+  --story-art: linear-gradient(145deg, #4b0f1a, #121212);
 }
 
 .story-avatar--two {
-  --story-art: url("/assets/profile-isadora.webp");
+  --story-art: linear-gradient(145deg, #2a0f2e, #121212);
 }
 
 .story-avatar--three {
-  --story-art: url("/assets/profile-laura.webp");
+  --story-art: linear-gradient(145deg, #6e1e2b, #0a0a0a);
 }
 
 .story-avatar--four {
-  --story-art: url("/assets/profile-hero.webp");
+  --story-art: linear-gradient(145deg, #121212, #4b0f1a);
 }
 
 .feature-strip {
@@ -1509,8 +1511,8 @@ body.is-switching-category .explore {
   min-height: 22rem;
   border-radius: 1rem;
   background:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.55)),
-    url("/assets/profile-hero.webp");
+    radial-gradient(ellipse at 50% 24%, rgba(212, 175, 55, 0.28), transparent 10rem),
+    linear-gradient(145deg, #121212, #4b0f1a 52%, #0a0a0a);
   background-size: cover;
   background-position: center top;
 }
@@ -1663,19 +1665,19 @@ body.is-switching-category .explore {
 }
 
 .profile-card__media--one {
-  --profile-art: url("/assets/profile-valentina.webp");
+  --profile-art: linear-gradient(145deg, #4b0f1a, #121212);
 }
 
 .profile-card__media--two {
-  --profile-art: url("/assets/profile-isadora.webp");
+  --profile-art: linear-gradient(145deg, #2a0f2e, #121212);
 }
 
 .profile-card__media--three {
-  --profile-art: url("/assets/profile-laura.webp");
+  --profile-art: linear-gradient(145deg, #6e1e2b, #0a0a0a);
 }
 
 .profile-card__media--four {
-  --profile-art: url("/assets/profile-hero.webp");
+  --profile-art: linear-gradient(145deg, #121212, #4b0f1a);
 }
 
 .profile-card__body {
@@ -1895,8 +1897,8 @@ body.is-switching-category .explore {
   min-height: clamp(28rem, 55vw, 44rem);
   border-radius: 0.9rem;
   background:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.76)),
-    url("/assets/profile-hero.webp");
+    radial-gradient(ellipse at 50% 24%, rgba(212, 175, 55, 0.22), transparent 10rem),
+    linear-gradient(145deg, #121212, #4b0f1a 52%, #0a0a0a);
   background-size: cover;
   background-position: center top;
 }
@@ -1910,22 +1912,17 @@ body.is-switching-category .explore {
   min-height: 5rem;
   border-radius: 0.65rem;
   background:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.5)),
-    url("/assets/profile-isadora.webp");
+    linear-gradient(145deg, #2a0f2e, #121212);
   background-size: cover;
   background-position: center top;
 }
 
 .gallery-strip span:nth-child(2) {
-  background-image:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.5)),
-    url("/assets/profile-valentina.webp");
+  background-image: linear-gradient(145deg, #4b0f1a, #121212);
 }
 
 .gallery-strip span:nth-child(3) {
-  background-image:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.5)),
-    url("/assets/profile-laura.webp");
+  background-image: linear-gradient(145deg, #6e1e2b, #0a0a0a);
 }
 
 .profile-panel {
@@ -2568,8 +2565,8 @@ body.is-switching-category .explore {
   height: 15rem;
   margin: -1.3rem -1.3rem 1.2rem;
   background:
-    linear-gradient(180deg, transparent, rgba(18, 18, 18, 0.9)),
-    url("/assets/profile-valentina.webp");
+    radial-gradient(ellipse at 50% 24%, rgba(212, 175, 55, 0.22), transparent 9rem),
+    linear-gradient(145deg, #121212, #4b0f1a 52%, #0a0a0a);
   background-size: cover;
   background-position: center top;
 }

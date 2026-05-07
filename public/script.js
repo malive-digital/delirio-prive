@@ -47,12 +47,10 @@ const ageConfirm = document.querySelector("#age-confirm");
 const interestModal = document.querySelector("#interest-modal");
 const interestOptions = document.querySelectorAll(".interest-option");
 const categoryLinks = document.querySelectorAll(".category-switcher a");
-const authForm = document.querySelector(".auth-form");
 const profileEditorForm = document.querySelector(".profile-editor-form");
 const dashboardActionButtons = document.querySelectorAll("[data-dashboard-target]");
 const dashboardPanels = document.querySelectorAll(".dashboard-workspace-panel");
 const mediaUploadForm = document.querySelector(".media-upload-form");
-const isLoggedIn = localStorage.getItem("delirioLoggedIn") === "true";
 const interestTargets = {
   Mulheres: "/mulheres",
   Homens: "/homens",
@@ -63,14 +61,6 @@ const savedInterest = localStorage.getItem("delirioInterest");
 
 if (currentPage === "/index" && localStorage.getItem("delirioAgeConfirmed") === "true" && savedInterest) {
   window.location.href = interestTargets[savedInterest] || "/mulheres";
-}
-
-if (isLoggedIn) {
-  document.body.classList.add("is-logged-in");
-}
-
-if (window.location.pathname.endsWith("/dashboard") && !isLoggedIn) {
-  window.location.href = "/login";
 }
 
 if (ageGate) {
@@ -157,21 +147,6 @@ categoryLinks.forEach((link) => {
     }, 90);
   });
 });
-
-if (authForm) {
-  authForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const submitBtn = authForm.querySelector('button[type="submit"]') || authForm.querySelector('.button');
-    if(submitBtn) submitBtn.classList.add('is-loading');
-    
-    setTimeout(() => {
-      if(submitBtn) submitBtn.classList.remove('is-loading');
-      localStorage.setItem("delirioLoggedIn", "true");
-      Toast.show("Login realizado com sucesso!", "success");
-      setTimeout(() => window.location.href = "/dashboard", 800);
-    }, 1200);
-  });
-}
 
 if (profileEditorForm) {
   profileEditorForm.addEventListener("submit", (event) => {
