@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 const adminWhatsapp = "5511999999999";
 const displayWhatsapp = "(11) 99999-9999";
 
-export default function CadastroWhatsapp() {
+function CadastroWhatsappContent() {
+  const searchParams = useSearchParams();
+  const plano = searchParams.get("plano");
   const message = encodeURIComponent(
-    "Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil na plataforma. Podem me orientar pelo atendimento oficial?",
+    plano
+      ? `Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil no plano ${plano}. Podem me orientar pelo atendimento oficial?`
+      : "Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil na plataforma. Podem me orientar pelo atendimento oficial?",
   );
   const waLink = `https://wa.me/${adminWhatsapp}?text=${message}`;
 
@@ -120,5 +126,13 @@ export default function CadastroWhatsapp() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function CadastroWhatsapp() {
+  return (
+    <Suspense fallback={null}>
+      <CadastroWhatsappContent />
+    </Suspense>
   );
 }

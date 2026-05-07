@@ -15,8 +15,8 @@ type MediaFile = {
 };
 
 const initialMediaFiles: MediaFile[] = [];
-const baseApprovedPhotoCount = 1;
-const baseApprovedVideoCount = 1;
+const baseApprovedPhotoCount = 0;
+const baseApprovedVideoCount = 0;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -536,18 +536,11 @@ export default function Dashboard() {
                         <span style={{ padding: "0.3rem 0.8rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>{file.status}</span>
                       </li>
                     ))}
-                    <li style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "0.5rem", border: "1px solid rgba(245,230,200,0.05)" }}>
-                      <span style={{ color: "white" }}>ensaio_vip_01.jpg</span>
-                      <span style={{ padding: "0.3rem 0.8rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>Aprovada</span>
-                    </li>
-                    <li style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "0.5rem", border: "1px solid rgba(245,230,200,0.05)" }}>
-                      <span style={{ color: "white" }}>video_intro.mp4</span>
-                      <span style={{ padding: "0.3rem 0.8rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>Em análise</span>
-                    </li>
-                    <li style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "0.5rem", border: "1px solid rgba(245,230,200,0.05)" }}>
-                      <span style={{ color: "white" }}>selfie_espelho.jpg</span>
-                      <span style={{ padding: "0.3rem 0.8rem", background: "rgba(239,68,68,0.1)", color: "#f87171", borderRadius: "999px", fontSize: "0.8rem", fontWeight: "bold" }}>Recusada (Baixa prop.)</span>
-                    </li>
+                    {mediaFiles.length === 0 && (
+                      <li style={{ textAlign: "center", color: "var(--text-secondary)", padding: "1rem" }}>
+                        Nenhum arquivo enviado
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>
@@ -562,21 +555,7 @@ export default function Dashboard() {
 
               {/* Cards responsivos em vez de tabela */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {[
-                  { data: "18/03/2026", plano: "Top Privê", valor: "R$ 149,90", metodo: "PIX", status: "Pago" },
-                  { data: "18/02/2026", plano: "Top Privê", valor: "R$ 149,90", metodo: "PIX", status: "Pago" },
-                  { data: "18/01/2026", plano: "Premium", valor: "R$ 89,90", metodo: "Cartão", status: "Pago" },
-                ].map((row, i) => (
-                  <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.25)", padding: "1rem 1.25rem", borderRadius: "0.75rem", border: "1px solid rgba(245,230,200,0.07)" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", flex: 1 }}>
-                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Data</p><p style={{ margin: 0, color: "white" }}>{row.data}</p></div>
-                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Plano</p><p style={{ margin: 0, color: "var(--gold-primary)", fontWeight: 700 }}>{row.plano}</p></div>
-                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Valor</p><p style={{ margin: 0, color: "white" }}>{row.valor}</p></div>
-                      <div><p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>Método</p><p style={{ margin: 0, color: "white" }}>{row.metodo}</p></div>
-                    </div>
-                    <span style={{ padding: "0.4rem 0.9rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontSize: "0.82rem", fontWeight: 700, border: "1px solid rgba(34,197,94,0.25)" }}>{row.status}</span>
-                  </div>
-                ))}
+                {[]}
               </div>
             </div>
           )}

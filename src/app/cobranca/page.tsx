@@ -6,6 +6,7 @@ import { getPlanConfig } from "@/lib/plans";
 
 export default function Cobranca() {
   const [selectedPlan, setSelectedPlan] = useState("Top Privê");
+  const planHref = (planName: string) => `/cadastro-whatsapp?plano=${encodeURIComponent(planName)}`;
 
   const plans = [
     {
@@ -91,20 +92,13 @@ export default function Cobranca() {
                   <li key={idx} style={{ marginBottom: "0.8rem", fontSize: "1.05rem" }}>{feat}</li>
                 ))}
               </ul>
-              <button 
-                className={`button ${plan.buttonClass} plan__button`} 
+              <Link
+                href={planHref(plan.name)}
+                className={`button ${plan.buttonClass} plan__button`}
                 style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }}
-                onClick={(e) => {
-                  const btn = e.currentTarget;
-                  btn.classList.add("is-loading");
-                  setTimeout(() => {
-                    btn.classList.remove("is-loading");
-                    alert(`Redirecionando para o gateway de pagamento (MercadoPago/Stripe) do plano ${plan.name} no valor de ${plan.price}...`);
-                  }, 1500);
-                }}
               >
                 {plan.buttonLabel}
-              </button>
+              </Link>
             </article>
           ))}
         </section>

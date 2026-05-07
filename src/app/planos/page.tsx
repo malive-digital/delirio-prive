@@ -6,6 +6,7 @@ import { getPlanConfig } from "@/lib/plans";
 
 export default function Cobranca() {
   const [selectedPlan, setSelectedPlan] = useState("Top Privê");
+  const planHref = (planName: string) => `/cadastro-whatsapp?plano=${encodeURIComponent(planName)}`;
 
   const plans = [
     {
@@ -91,7 +92,7 @@ export default function Cobranca() {
                   <li key={idx} style={{ marginBottom: "0.8rem", fontSize: "1.05rem" }}>{feat}</li>
                 ))}
               </ul>
-              <Link href="/cadastro-whatsapp" className={`button ${plan.buttonClass} plan__button`} style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }}>
+              <Link href={planHref(plan.name)} className={`button ${plan.buttonClass} plan__button`} style={{ width: "100%", padding: "1rem", fontSize: "1.1rem" }}>
                 {plan.buttonLabel}
               </Link>
             </article>

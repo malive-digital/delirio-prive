@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const TRIAL_DAYS = 7;
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
 
 export default function Login() {
   const router = useRouter();
@@ -31,6 +35,13 @@ export default function Login() {
     }
 
     const userId = data.user.id;
+    const userEmail = data.user.email?.toLowerCase() || "";
+
+    if (ADMIN_EMAILS.includes(userEmail)) {
+      router.push("/admin");
+      return;
+    }
+
     const trialKey = `trial_start_${userId}`;
 
     // Se é o primeiro login, registra o início do trial agora

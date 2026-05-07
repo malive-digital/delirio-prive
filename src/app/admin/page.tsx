@@ -1,43 +1,147 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { getPlanConfig } from "@/lib/plans";
+
+type Profile = {
+  id: string;
+  type: string | null;
+  name: string | null;
+  active_plan: string | null;
+  is_online: boolean | null;
+  profile_verified: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type Subscription = {
+  id?: string;
+  user_id?: string;
+  profile_id?: string;
+  plan?: string;
+  plan_key?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+const formatDateTimeSP = (value?: string | null) => {
+  if (!value) return "Sem data";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(value));
+};
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("aprovacoes");
-  const [editingProfile, setEditingProfile] = useState<string | null>(null);
-  const [previewMedia, setPreviewMedia] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("Carregando dados reais da base...");
+
+  useEffect(() => {
+    const loadAdminData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user?.email) {
+        router.push("/login");
+        return;
+      }
+
+      const userEmail = user.email.toLowerCase();
+      let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      const adminResult = await supabase
+        .from("admin_users")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (adminResult.data) {
+        isAdmin = true;
+      }
+
+      if (!isAdmin) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const [profilesResult, subscriptionsResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,type,name,active_plan,is_online,profile_verified,created_at,updated_at")
+          .order("updated_at", { ascending: false }),
+        supabase.from("subscriptions").select("*"),
+      ]);
+
+      if (profilesResult.error) {
+        setMessage(`Não foi possível carregar perfis: ${profilesResult.error.message}`);
+      } else {
+        setProfiles(profilesResult.data || []);
+        setMessage("Dados carregados da base Supabase.");
+      }
+
+      if (!subscriptionsResult.error) {
+        setSubscriptions(subscriptionsResult.data || []);
+      }
+
+      setLoading(false);
+    };
+
+    loadAdminData();
+  }, [router]);
+
+  const planCounts = useMemo(() => {
+    return profiles.reduce<Record<string, number>>((acc, profile) => {
+      const plan = getPlanConfig(profile.active_plan || "Basico").displayName;
+      acc[plan] = (acc[plan] || 0) + 1;
+      return acc;
+    }, {});
+  }, [profiles]);
+
+  const activeProfiles = profiles.filter((profile) => profile.is_online || profile.profile_verified).length;
 
   return (
     <div className="entry-page" style={{ overflowX: "hidden" }}>
-      {/* Header Admin */}
       <header className="app-header" style={{ borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
         <Link className="brand" href="/">
           <span className="brand__mark" style={{ background: "var(--gold-primary)", color: "#111" }}>ADM</span>
           <span>Painel Administrativo</span>
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <span style={{ color: "var(--gold-primary)", fontWeight: "bold" }}>Equipe DP</span>
-          <Link href="/" style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Sair do Painel</Link>
-        </div>
+        <nav className="app-nav" aria-label="Navegação administrativa">
+          <Link href="/">Site</Link>
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/login">Trocar usuário</Link>
+        </nav>
       </header>
 
       <main className="app-page dashboard" style={{ maxWidth: "1400px", margin: "0 auto", padding: "2rem" }}>
-        
-        {/* Título */}
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "2.5rem", margin: 0 }}>Gestão Geral da Plataforma</h1>
-          <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>Aprovações, controle de perfis e saúde financeira do negócio.</p>
+          <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>{message}</p>
         </div>
 
-        {/* Menu de Navegação Admin */}
         <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", borderBottom: "1px solid rgba(245, 230, 200, 0.1)", paddingBottom: "1rem", overflowX: "auto" }}>
           {[
             { id: "aprovacoes", label: "Aprovação de Mídia" },
             { id: "perfis", label: "Gerenciar Perfis" },
-            { id: "financeiro", label: "Visão Financeira" }
-          ].map(tab => (
-            <button 
+            { id: "financeiro", label: "Visão Financeira" },
+          ].map((tab) => (
+            <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
@@ -48,7 +152,7 @@ export default function AdminDashboard() {
                 borderRadius: "0.5rem",
                 fontWeight: "bold",
                 cursor: "pointer",
-                transition: "all 0.2s ease"
+                whiteSpace: "nowrap",
               }}
             >
               {tab.label}
@@ -56,223 +160,106 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Conteúdo Dinâmico */}
-        <div style={{ background: "rgba(10, 10, 10, 0.4)", border: "1px solid rgba(245, 230, 200, 0.08)", borderRadius: "1.25rem", padding: "2.5rem", backdropFilter: "blur(12px)", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}>
-          
-          {/* TAB: APROVAÇÃO DE MÍDIA */}
-          {activeTab === "aprovacoes" && (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <h2 style={{ fontSize: "1.5rem" }}>Fila de Análise</h2>
-                <span style={{ padding: "0.4rem 1rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>3 Pendentes</span>
-              </div>
-              
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
-                    <th style={{ padding: "1rem" }}>Modelo</th>
-                    <th style={{ padding: "1rem" }}>Tipo</th>
-                    <th style={{ padding: "1rem" }}>Arquivo</th>
-                    <th style={{ padding: "1rem", textAlign: "right" }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}><strong>Isadora Monteiro</strong></td>
-                    <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>Foto (Capa)</td>
-                    <td style={{ padding: "1rem" }}>
-                      <button onClick={() => setPreviewMedia("foto_capa_isadora.jpg")} style={{ background: "transparent", border: "none", color: "#3b82f6", textDecoration: "underline", cursor: "pointer" }}>Visualizar Arquivo</button>
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                      <button style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", background: "#4ade80", color: "#111", border: "none", borderRadius: "0.3rem", cursor: "pointer", fontWeight: "bold" }}>Aprovar</button>
-                      <button style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)", background: "transparent", borderRadius: "0.3rem", cursor: "pointer" }}>Recusar</button>
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}><strong>Rafael Prado</strong></td>
-                    <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>Vídeo</td>
-                    <td style={{ padding: "1rem" }}>
-                      <button onClick={() => setPreviewMedia("video_intro_rafael.mp4")} style={{ background: "transparent", border: "none", color: "#3b82f6", textDecoration: "underline", cursor: "pointer" }}>Visualizar Arquivo</button>
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                      <button style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", background: "#4ade80", color: "#111", border: "none", borderRadius: "0.3rem", cursor: "pointer", fontWeight: "bold" }}>Aprovar</button>
-                      <button style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)", background: "transparent", borderRadius: "0.3rem", cursor: "pointer" }}>Recusar</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        <div style={{ background: "rgba(10, 10, 10, 0.4)", border: "1px solid rgba(245, 230, 200, 0.08)", borderRadius: "1.25rem", padding: "clamp(1.25rem, 4vw, 2.5rem)", backdropFilter: "blur(12px)", boxShadow: "0 20px 40px rgba(0,0,0,0.3)", overflowX: "auto" }}>
+          {loading && <p style={{ color: "var(--text-secondary)" }}>Carregando...</p>}
 
-              {/* Modal de Preview */}
-              {previewMedia && (
-                <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-                  <div style={{ background: "#111", padding: "2rem", borderRadius: "1rem", border: "1px solid var(--gold-primary)", textAlign: "center", maxWidth: "600px", width: "100%" }}>
-                    <h3 style={{ color: "white", marginBottom: "1rem" }}>Visualizando: {previewMedia}</h3>
-                    <div style={{ width: "100%", height: "300px", background: "#222", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2rem", borderRadius: "0.5rem", color: "var(--text-secondary)" }}>
-                      [Área do Mídia (Foto ou Vídeo)]
-                    </div>
-                    <button onClick={() => setPreviewMedia(null)} className="button button--primary" style={{ padding: "0.8rem 2rem" }}>Fechar</button>
-                  </div>
-                </div>
+          {!loading && activeTab === "aprovacoes" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Análise</h2>
+                <span style={{ padding: "0.4rem 1rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>0 pendentes</span>
+              </div>
+              <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+                Não há tabela de mídia publicada na base Supabase. A fila fica vazia até os uploads reais serem persistidos.
+              </p>
+            </div>
+          )}
+
+          {!loading && activeTab === "perfis" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Catálogo de Perfis</h2>
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>{profiles.length} perfil(is) na base</span>
+              </div>
+
+              {profiles.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)" }}>Nenhum perfil encontrado.</p>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "760px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
+                      <th style={{ padding: "1rem" }}>Perfil</th>
+                      <th style={{ padding: "1rem" }}>Categoria</th>
+                      <th style={{ padding: "1rem" }}>Plano</th>
+                      <th style={{ padding: "1rem" }}>Status</th>
+                      <th style={{ padding: "1rem" }}>Atualizado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profiles.map((profile) => (
+                      <tr key={profile.id} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
+                        <td style={{ padding: "1rem" }}><strong>{profile.name || "Sem nome"}</strong></td>
+                        <td style={{ padding: "1rem", color: "var(--text-secondary)", textTransform: "capitalize" }}>{profile.type || "Não informado"}</td>
+                        <td style={{ padding: "1rem" }}>{getPlanConfig(profile.active_plan || "Basico").displayName}</td>
+                        <td style={{ padding: "1rem" }}>
+                          <span style={{ color: profile.profile_verified ? "#4ade80" : "#eab308", fontWeight: "bold" }}>
+                            {profile.profile_verified ? "Verificado" : "Aguardando verificação"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{formatDateTimeSP(profile.updated_at || profile.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
           )}
 
-          {/* TAB: GERENCIAR PERFIS */}
-          {activeTab === "perfis" && !editingProfile && (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <h2 style={{ fontSize: "1.5rem" }}>Catálogo de Modelos</h2>
-                <input 
-                  type="text" 
-                  placeholder="Buscar modelo..." 
-                  style={{ padding: "0.8rem 1.5rem", borderRadius: "999px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(245,230,200,0.1)", color: "white", width: "300px" }}
-                />
-              </div>
-
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
-                    <th style={{ padding: "1rem" }}>Modelo</th>
-                    <th style={{ padding: "1rem" }}>Categoria</th>
-                    <th style={{ padding: "1rem" }}>Plano</th>
-                    <th style={{ padding: "1rem" }}>Status</th>
-                    <th style={{ padding: "1rem", textAlign: "right" }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}><strong>Isadora Monteiro</strong></td>
-                    <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>Mulher</td>
-                    <td style={{ padding: "1rem" }}>Top Privê</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80" }}>Ativo</span></td>
-                    <td style={{ padding: "1rem", textAlign: "right" }}>
-                      <button onClick={() => setEditingProfile("Isadora Monteiro")} style={{ background: "transparent", border: "1px solid var(--gold-primary)", color: "var(--gold-primary)", padding: "0.4rem 1rem", borderRadius: "0.3rem", cursor: "pointer", fontSize: "0.8rem" }}>Editar</button>
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}><strong>Rafael Prado</strong></td>
-                    <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>Homem</td>
-                    <td style={{ padding: "1rem" }}>Básico</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#f87171" }}>Inativo (Vencido)</span></td>
-                    <td style={{ padding: "1rem", textAlign: "right" }}>
-                      <button onClick={() => setEditingProfile("Rafael Prado")} style={{ background: "transparent", border: "1px solid var(--gold-primary)", color: "var(--gold-primary)", padding: "0.4rem 1rem", borderRadius: "0.3rem", cursor: "pointer", fontSize: "0.8rem" }}>Editar</button>
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}><strong>Luna Valença</strong></td>
-                    <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>Trans</td>
-                    <td style={{ padding: "1rem" }}>Premium</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80" }}>Ativo</span></td>
-                    <td style={{ padding: "1rem", textAlign: "right" }}>
-                      <button onClick={() => setEditingProfile("Luna Valença")} style={{ background: "transparent", border: "1px solid var(--gold-primary)", color: "var(--gold-primary)", padding: "0.4rem 1rem", borderRadius: "0.3rem", cursor: "pointer", fontSize: "0.8rem" }}>Editar</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* EDITAR PERFIL DO ADMINISTRADOR */}
-          {activeTab === "perfis" && editingProfile && (
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
-                <button onClick={() => setEditingProfile(null)} style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                  Voltar
-                </button>
-                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Editando: <span style={{ color: "var(--gold-primary)" }}>{editingProfile}</span></h2>
-              </div>
-              
-              <form className="model-profile-form">
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
-                  <label className="input-group">
-                    <span>Nome Artístico</span>
-                    <input type="text" defaultValue={editingProfile} style={{ width: "100%", padding: "1rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(245,230,200,0.1)", color: "white" }} />
-                  </label>
-                  <label className="input-group">
-                    <span>WhatsApp</span>
-                    <input type="text" defaultValue="(11) 99999-9999" style={{ width: "100%", padding: "1rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(245,230,200,0.1)", color: "white" }} />
-                  </label>
-                  <label className="input-group">
-                    <span>Localização</span>
-                    <input type="text" defaultValue="São Paulo, SP" style={{ width: "100%", padding: "1rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(245,230,200,0.1)", color: "white" }} />
-                  </label>
-                  <label className="input-group">
-                    <span>Ação de Moderação</span>
-                    <select style={{ width: "100%", padding: "1rem", borderRadius: "0.5rem", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.5)", color: "#f87171", fontWeight: "bold" }}>
-                      <option>Perfil Ativo</option>
-                      <option>Suspender Temporariamente</option>
-                      <option>Banir Usuário</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div style={{ display: "flex", gap: "1rem" }}>
-                  <button className="button button--primary" type="submit" onClick={e => { e.preventDefault(); setEditingProfile(null); alert("Perfil atualizado pelo admin."); }}>Salvar Alterações</button>
-                  <button className="button button--muted" type="button" onClick={() => setEditingProfile(null)}>Cancelar</button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* TAB: VISÃO FINANCEIRA */}
-          {activeTab === "financeiro" && (
+          {!loading && activeTab === "financeiro" && (
             <div>
               <h2 style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>Receita e Assinaturas</h2>
-              
-              {/* KPIs Financeiros */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
                 <div style={{ background: "rgba(18,18,18,0.6)", padding: "1.5rem", borderRadius: "1rem", border: "1px solid rgba(245,230,200,0.1)" }}>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Receita Mensal (Estimada)</p>
-                  <strong style={{ display: "block", fontSize: "2.5rem", color: "#4ade80", margin: "0.5rem 0" }}>R$ 14.250,00</strong>
-                  <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Baseado em planos ativos</span>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Perfis na base</p>
+                  <strong style={{ display: "block", fontSize: "2.5rem", color: "white", margin: "0.5rem 0" }}>{profiles.length}</strong>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{activeProfiles} com sinal ativo/verificado</span>
                 </div>
-                
+
                 <div style={{ background: "rgba(18,18,18,0.6)", padding: "1.5rem", borderRadius: "1rem", border: "1px solid rgba(245,230,200,0.1)" }}>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Total de Assinaturas</p>
-                  <strong style={{ display: "block", fontSize: "2.5rem", color: "white", margin: "0.5rem 0" }}>142</strong>
-                  <span style={{ color: "var(--gold-primary)", fontSize: "0.85rem" }}>85 Básico | 40 Premium | 17 Top</span>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Assinaturas</p>
+                  <strong style={{ display: "block", fontSize: "2.5rem", color: "white", margin: "0.5rem 0" }}>{subscriptions.length}</strong>
+                  <span style={{ color: "var(--gold-primary)", fontSize: "0.85rem" }}>
+                    {Object.entries(planCounts).map(([plan, count]) => `${count} ${plan}`).join(" | ") || "Sem planos ativos"}
+                  </span>
                 </div>
               </div>
 
-              <h3 style={{ fontSize: "1.2rem", color: "var(--gold-primary)", marginBottom: "1rem" }}>Últimos Pagamentos Processados</h3>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
-                    <th style={{ padding: "1rem" }}>Data</th>
-                    <th style={{ padding: "1rem" }}>Modelo</th>
-                    <th style={{ padding: "1rem" }}>Plano</th>
-                    <th style={{ padding: "1rem" }}>Valor</th>
-                    <th style={{ padding: "1rem" }}>Status Gateway</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>Hoje, 10:42</td>
-                    <td style={{ padding: "1rem" }}>Isadora Monteiro</td>
-                    <td style={{ padding: "1rem" }}>Top Privê</td>
-                    <td style={{ padding: "1rem" }}>R$ 149,90</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80", fontWeight: "bold" }}>Aprovado</span></td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>Ontem, 16:30</td>
-                    <td style={{ padding: "1rem" }}>Luna Valença</td>
-                    <td style={{ padding: "1rem" }}>Premium</td>
-                    <td style={{ padding: "1rem" }}>R$ 89,90</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#4ade80", fontWeight: "bold" }}>Aprovado</span></td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                    <td style={{ padding: "1rem" }}>Ontem, 09:15</td>
-                    <td style={{ padding: "1rem" }}>Rafael Prado</td>
-                    <td style={{ padding: "1rem" }}>Básico</td>
-                    <td style={{ padding: "1rem" }}>R$ 49,90</td>
-                    <td style={{ padding: "1rem" }}><span style={{ color: "#f87171", fontWeight: "bold" }}>Recusado (Cartão)</span></td>
-                  </tr>
-                </tbody>
-              </table>
+              <h3 style={{ fontSize: "1.2rem", color: "var(--gold-primary)", marginBottom: "1rem" }}>Assinaturas registradas</h3>
+              {subscriptions.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)" }}>Nenhuma assinatura encontrada na tabela `subscriptions`.</p>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "680px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
+                      <th style={{ padding: "1rem" }}>Plano</th>
+                      <th style={{ padding: "1rem" }}>Status</th>
+                      <th style={{ padding: "1rem" }}>Atualizado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscriptions.map((subscription, index) => (
+                      <tr key={subscription.id || `${subscription.user_id}-${index}`} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
+                        <td style={{ padding: "1rem" }}>{getPlanConfig(subscription.plan || subscription.plan_key || "Basico").displayName}</td>
+                        <td style={{ padding: "1rem" }}>{subscription.status || "Sem status"}</td>
+                        <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{formatDateTimeSP(subscription.updated_at || subscription.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
-
         </div>
       </main>
     </div>
