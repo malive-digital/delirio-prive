@@ -10,6 +10,7 @@ export default function Page() {
         <a href="/index">Início</a>
         <a href="/favoritos">Favoritos</a>
         <a href="/planos">Planos</a>
+        <a href="/parcerias-promocoes">Parcerias</a>
         <a className="login-link" href="/login">Entrar</a>
       </nav>
     </header>

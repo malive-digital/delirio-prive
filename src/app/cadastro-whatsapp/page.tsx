@@ -27,6 +27,7 @@ function CadastroWhatsappContent() {
         <nav className="app-nav" aria-label="Navegação">
           <Link href="/">Início</Link>
           <Link href="/planos">Planos</Link>
+          <Link href="/parcerias-promocoes">Parcerias</Link>
           <Link href="/login">Entrar</Link>
         </nav>
       </header>

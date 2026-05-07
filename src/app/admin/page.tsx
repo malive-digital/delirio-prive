@@ -28,6 +28,30 @@ type Subscription = {
   updated_at?: string;
 };
 
+type PartnershipPromotion = {
+  id: string;
+  title: string;
+  partner_name: string;
+  description: string;
+  promotion_label: string | null;
+  image_url: string;
+  link_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string | null;
+};
+
+const emptyPartnershipForm = {
+  title: "",
+  partner_name: "",
+  description: "",
+  promotion_label: "",
+  image_url: "",
+  link_url: "",
+  sort_order: "0",
+  is_active: true,
+};
+
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
   .split(",")
   .map((email) => email.trim().toLowerCase())
@@ -48,8 +72,21 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("aprovacoes");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [partnerships, setPartnerships] = useState<PartnershipPromotion[]>([]);
+  const [partnershipForm, setPartnershipForm] = useState(emptyPartnershipForm);
+  const [partnershipStatus, setPartnershipStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando dados reais da base...");
+
+  const loadPartnerships = async () => {
+    const { data } = await supabase
+      .from("partnership_promotions")
+      .select("id,title,partner_name,description,promotion_label,image_url,link_url,is_active,sort_order,created_at")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    setPartnerships(data || []);
+  };
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -98,6 +135,7 @@ export default function AdminDashboard() {
         setSubscriptions(subscriptionsResult.data || []);
       }
 
+      await loadPartnerships();
       setLoading(false);
     };
 
@@ -113,6 +151,39 @@ export default function AdminDashboard() {
   }, [profiles]);
 
   const activeProfiles = profiles.filter((profile) => profile.is_online || profile.profile_verified).length;
+
+  const handlePartnershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPartnershipStatus("Salvando parceria...");
+
+    const { error } = await supabase.from("partnership_promotions").insert({
+      title: partnershipForm.title.trim(),
+      partner_name: partnershipForm.partner_name.trim(),
+      description: partnershipForm.description.trim(),
+      promotion_label: partnershipForm.promotion_label.trim() || null,
+      image_url: partnershipForm.image_url.trim(),
+      link_url: partnershipForm.link_url.trim() || null,
+      sort_order: Number(partnershipForm.sort_order) || 0,
+      is_active: partnershipForm.is_active,
+    });
+
+    if (error) {
+      setPartnershipStatus(`Erro ao salvar: ${error.message}`);
+      return;
+    }
+
+    setPartnershipForm(emptyPartnershipForm);
+    setPartnershipStatus("Parceria publicada com sucesso.");
+    await loadPartnerships();
+  };
+
+  const togglePartnership = async (item: PartnershipPromotion) => {
+    await supabase
+      .from("partnership_promotions")
+      .update({ is_active: !item.is_active, updated_at: new Date().toISOString() })
+      .eq("id", item.id);
+    await loadPartnerships();
+  };
 
   return (
     <div className="entry-page" style={{ overflowX: "hidden" }}>
@@ -139,6 +210,7 @@ export default function AdminDashboard() {
             { id: "aprovacoes", label: "Aprovação de Mídia" },
             { id: "perfis", label: "Gerenciar Perfis" },
             { id: "financeiro", label: "Visão Financeira" },
+            { id: "parcerias", label: "Parcerias e Promoções" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -257,6 +329,71 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               )}
+            </div>
+          )}
+
+          {!loading && activeTab === "parcerias" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Parcerias e Promoções</h2>
+                <Link className="button button--ghost" href="/parcerias-promocoes">Ver página pública</Link>
+              </div>
+
+              <form onSubmit={handlePartnershipSubmit} style={{ display: "grid", gap: "1rem", marginBottom: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+                  <label className="input-group">
+                    <span>Título</span>
+                    <input required value={partnershipForm.title} onChange={(e) => setPartnershipForm({ ...partnershipForm, title: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                  </label>
+                  <label className="input-group">
+                    <span>Parceiro</span>
+                    <input required value={partnershipForm.partner_name} onChange={(e) => setPartnershipForm({ ...partnershipForm, partner_name: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                  </label>
+                  <label className="input-group">
+                    <span>Selo</span>
+                    <input placeholder="Ex: 15% OFF" value={partnershipForm.promotion_label} onChange={(e) => setPartnershipForm({ ...partnershipForm, promotion_label: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                  </label>
+                  <label className="input-group">
+                    <span>Ordem</span>
+                    <input type="number" value={partnershipForm.sort_order} onChange={(e) => setPartnershipForm({ ...partnershipForm, sort_order: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                  </label>
+                </div>
+                <label className="input-group">
+                  <span>URL da foto</span>
+                  <input required type="url" placeholder="https://..." value={partnershipForm.image_url} onChange={(e) => setPartnershipForm({ ...partnershipForm, image_url: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                </label>
+                <label className="input-group">
+                  <span>Link da promoção</span>
+                  <input type="url" placeholder="https://..." value={partnershipForm.link_url} onChange={(e) => setPartnershipForm({ ...partnershipForm, link_url: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} />
+                </label>
+                <label className="input-group">
+                  <span>Descrição</span>
+                  <textarea required rows={4} value={partnershipForm.description} onChange={(e) => setPartnershipForm({ ...partnershipForm, description: e.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white", resize: "vertical" }} />
+                </label>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", color: "var(--text-secondary)" }}>
+                  <input type="checkbox" checked={partnershipForm.is_active} onChange={(e) => setPartnershipForm({ ...partnershipForm, is_active: e.target.checked })} />
+                  Publicar agora
+                </label>
+                <button className="button button--primary" type="submit" style={{ justifySelf: "start", padding: "0.9rem 1.4rem" }}>Cadastrar parceria</button>
+                {partnershipStatus && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{partnershipStatus}</p>}
+              </form>
+
+              <div style={{ display: "grid", gap: "0.85rem" }}>
+                {partnerships.length === 0 ? (
+                  <p style={{ color: "var(--text-secondary)" }}>Nenhuma parceria cadastrada.</p>
+                ) : partnerships.map((item) => (
+                  <div key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.5rem", background: "rgba(18,18,18,0.5)" }}>
+                    <img src={item.image_url} alt="" style={{ width: "4.5rem", height: "4.5rem", objectFit: "contain", borderRadius: "0.35rem", background: "#080808" }} />
+                    <div>
+                      <strong style={{ color: "white" }}>{item.title}</strong>
+                      <p style={{ margin: "0.25rem 0 0", color: "var(--text-secondary)" }}>{item.partner_name} - {item.is_active ? "Ativa" : "Inativa"}</p>
+                    </div>
+                    <button className="button button--ghost" type="button" onClick={() => togglePartnership(item)}>
+                      {item.is_active ? "Desativar" : "Ativar"}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

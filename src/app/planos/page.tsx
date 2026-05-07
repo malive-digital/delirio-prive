@@ -46,6 +46,7 @@ export default function Cobranca() {
           <Link href="/">Início</Link>
           <Link href="/favoritos">Favoritos</Link>
           <Link className="is-active" href="/planos">Planos</Link>
+          <Link href="/parcerias-promocoes">Parcerias</Link>
           <Link className="login-link" href="/login">Entrar</Link>
         </nav>
       </header>
