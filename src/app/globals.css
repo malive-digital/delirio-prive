@@ -2849,6 +2849,100 @@ body.is-switching-category .explore {
   font-weight: 900;
 }
 
+.dashboard-profile-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(145deg, rgba(212, 175, 55, 0.1), transparent 48%),
+    rgba(18, 18, 18, 0.52);
+}
+
+.dashboard-profile-guide h3 {
+  margin: 0.2rem 0 0.45rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.35rem, 2.3vw, 2rem);
+}
+
+.dashboard-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dashboard-guide-grid article {
+  padding: 0.8rem;
+  border: 1px solid rgba(245, 230, 200, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(10, 10, 10, 0.34);
+}
+
+.dashboard-guide-grid p {
+  margin: 0.35rem 0 0;
+}
+
+.quick-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.quick-options button {
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(245, 230, 200, 0.14);
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.42);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.quick-options button.is-selected,
+.quick-options button:hover,
+.quick-options button:focus-visible {
+  border-color: rgba(212, 175, 55, 0.56);
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-primary);
+  outline: 0;
+}
+
+.catalog-region-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.85rem;
+}
+
+.catalog-region-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.catalog-region-bar select {
+  min-height: 2.7rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(245, 230, 200, 0.16);
+  border-radius: 0.7rem;
+  background: rgba(10, 10, 10, 0.55);
+  color: var(--text-primary);
+}
+
+.catalog-region-bar p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
 .dashboard-facts {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
@@ -3932,7 +4026,12 @@ body.is-switching-category .explore {
   }
 
   .dashboard-summary,
-  .profile-public-preview {
+  .profile-public-preview,
+  .dashboard-profile-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-guide-grid {
     grid-template-columns: 1fr;
   }
 

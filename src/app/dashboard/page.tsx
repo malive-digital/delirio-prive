@@ -17,6 +17,7 @@ type ProfileForm = {
   type: string;
   whatsapp: string;
   location: string;
+  state_uf: string;
   headline: string;
   age: string;
   neighborhood: string;
@@ -56,6 +57,7 @@ const emptyProfile: ProfileForm = {
   type: "mulher",
   whatsapp: "",
   location: "",
+  state_uf: "",
   headline: "",
   age: "",
   neighborhood: "",
@@ -101,6 +103,48 @@ const mediaStatusCopy = {
   rejected: "Recusada",
 };
 
+const BRAZIL_UFS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+];
+
+const predefinedOptions = {
+  serves: ["Homens", "Mulheres", "Casais", "Trans", "Atendimento social", "Viagens"],
+  has_place: ["Com local", "Sem local", "Hotel ou motel", "A combinar"],
+  availability: ["Manha", "Tarde", "Noite", "Madrugada", "Segunda a sexta", "Fim de semana", "24 horas", "Com hora marcada"],
+  payment_methods: ["Pix", "Dinheiro", "Cartao de credito", "Cartao de debito", "Transferencia", "Sinal antecipado"],
+  services: ["Massagem", "Jantar", "Encontro social", "Viagem", "Atendimento virtual", "Fantasias", "Namoradinha", "Premium"],
+  specialties: ["Discricao", "Local proprio", "Atendimento em hotel", "Atendimento para casais", "Experiencia luxo", "Roleplay"],
+  languages: ["Portugues", "Ingles", "Espanhol", "Frances", "Italiano"],
+};
+
+const categoryGuides = {
+  mulher: {
+    title: "Padrao para mulheres",
+    headline: "Ex: Atendimento elegante, discreto e com hora marcada",
+    priceLabel: "Valor forte no perfil: 1 hora",
+    pricePlaceholder: "Ex: R$ 700",
+    serves: "Ex: homens, mulheres e casais",
+    services: "Destaque experiencias, estilo de atendimento, encontros sociais e diferenciais.",
+  },
+  homem: {
+    title: "Padrao para homens",
+    headline: "Ex: Dotadao novidade",
+    priceLabel: "Valor forte no perfil: 15 min",
+    pricePlaceholder: "Ex: R$ 100",
+    serves: "Ex: atende homens",
+    services: "Destaque porte fisico, discricao, disponibilidade, com local e combinados objetivos.",
+  },
+  trans: {
+    title: "Padrao para trans",
+    headline: "Ex: Estilo namoradinha",
+    priceLabel: "Valor forte no perfil: 1 hora",
+    pricePlaceholder: "Ex: R$ 700",
+    serves: "Ex: atende homens",
+    services: "Destaque estilo, documento verificado, local, experiencias e atendimento completo.",
+  },
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -117,6 +161,7 @@ export default function Dashboard() {
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
 
   const currentPlan = getPlanConfig(profile.active_plan || (isTrial ? "Basico" : "Top Prive"));
+  const categoryGuide = categoryGuides[profile.type as keyof typeof categoryGuides] || categoryGuides.mulher;
   const approval = approvalCopy[profile.profile_approval_status];
   const trialPercent = trialDaysLeft === null ? 0 : Math.max(0, Math.min(100, (trialDaysLeft / TRIAL_DAYS) * 100));
   const usedPhotos = mediaItems.filter((item) => item.media_type === "photo" && item.approval_status !== "rejected").length;
@@ -193,7 +238,7 @@ export default function Dashboard() {
       const { data: profileData } = await supabase
         .from("profiles")
         .select(
-          "name,type,whatsapp,location,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
+          "name,type,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
         )
         .eq("id", user.id)
         .maybeSingle();
@@ -226,6 +271,7 @@ export default function Dashboard() {
       name: nextProfile.name.trim() || null,
       whatsapp: nextProfile.whatsapp.trim() || null,
       location: nextProfile.location.trim() || null,
+      state_uf: nextProfile.state_uf || null,
       headline: nextProfile.headline.trim() || null,
       age: nextProfile.age.trim() || null,
       neighborhood: nextProfile.neighborhood.trim() || null,
@@ -251,6 +297,18 @@ export default function Dashboard() {
 
   const updateProfileField = <T extends keyof ProfileForm>(field: T, value: ProfileForm[T]) => {
     setProfile((current) => ({ ...current, [field]: value }));
+  };
+
+  const toggleListValue = (field: keyof Pick<ProfileForm, "serves" | "availability" | "payment_methods" | "services" | "specialties" | "languages">, value: string) => {
+    setProfile((current) => {
+      const values = current[field].split(",").map((item) => item.trim()).filter(Boolean);
+      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+      return { ...current, [field]: nextValues.join(", ") };
+    });
+  };
+
+  const hasListValue = (field: keyof Pick<ProfileForm, "serves" | "availability" | "payment_methods" | "services" | "specialties" | "languages">, value: string) => {
+    return profile[field].split(",").map((item) => item.trim()).includes(value);
   };
 
   const handleOnlineToggle = async () => {
@@ -554,6 +612,28 @@ export default function Dashboard() {
                     <p>Preencha os dados principais, valores, atendimento e preferencias que formam a pagina publica do perfil.</p>
                   </div>
 
+                  <section className="dashboard-profile-guide">
+                    <div>
+                      <span className="section-kicker">{categoryGuide.title}</span>
+                      <h3>{categoryGuide.headline}</h3>
+                      <p>{categoryGuide.services}</p>
+                    </div>
+                    <div className="dashboard-guide-grid">
+                      <article>
+                        <strong>{categoryGuide.priceLabel}</strong>
+                        <p>{categoryGuide.pricePlaceholder}</p>
+                      </article>
+                      <article>
+                        <strong>Atendimento</strong>
+                        <p>{categoryGuide.serves}</p>
+                      </article>
+                      <article>
+                        <strong>Localizacao</strong>
+                        <p>Bairro + cidade/UF + se tem local</p>
+                      </article>
+                    </div>
+                  </section>
+
                   <fieldset className="dashboard-fieldset">
                     <legend>Identificacao</legend>
                   <div className="dashboard-form-grid">
@@ -592,7 +672,7 @@ export default function Dashboard() {
                         value={profile.headline}
                         onChange={(event) => updateProfileField("headline", event.target.value)}
                         type="text"
-                        placeholder="Ex: Atendimento com hora marcada"
+                        placeholder={categoryGuide.headline}
                       />
                     </label>
 
@@ -604,6 +684,16 @@ export default function Dashboard() {
                         type="text"
                         placeholder="Cidade ou regiao"
                       />
+                    </label>
+
+                    <label className="input-group">
+                      <span>Estado (UF)</span>
+                      <select value={profile.state_uf} onChange={(event) => updateProfileField("state_uf", event.target.value)}>
+                        <option value="">Selecione</option>
+                        {BRAZIL_UFS.map((uf) => (
+                          <option key={uf} value={uf}>{uf}</option>
+                        ))}
+                      </select>
                     </label>
 
                     <label className="input-group">
@@ -643,7 +733,7 @@ export default function Dashboard() {
                     <div className="dashboard-form-grid">
                       <label className="input-group">
                         <span>Valor 15 min</span>
-                        <input value={profile.price_15} onChange={(event) => updateProfileField("price_15", event.target.value)} type="text" placeholder="Ex: R$ 350" />
+                        <input value={profile.price_15} onChange={(event) => updateProfileField("price_15", event.target.value)} type="text" placeholder={profile.type === "homem" ? categoryGuide.pricePlaceholder : "Ex: R$ 350"} />
                       </label>
                       <label className="input-group">
                         <span>Valor 30 min</span>
@@ -651,7 +741,7 @@ export default function Dashboard() {
                       </label>
                       <label className="input-group">
                         <span>Valor 1 hora</span>
-                        <input value={profile.price_60} onChange={(event) => updateProfileField("price_60", event.target.value)} type="text" placeholder="Ex: R$ 800" />
+                        <input value={profile.price_60} onChange={(event) => updateProfileField("price_60", event.target.value)} type="text" placeholder={profile.type === "trans" ? categoryGuide.pricePlaceholder : "Ex: R$ 800"} />
                       </label>
                       <label className="input-group">
                         <span>Pernoite</span>
@@ -669,7 +759,19 @@ export default function Dashboard() {
                       </label>
                       <label className="input-group">
                         <span>Atende</span>
-                        <input value={profile.serves} onChange={(event) => updateProfileField("serves", event.target.value)} type="text" placeholder="Ex: homens, mulheres e casais" />
+                        <input value={profile.serves} onChange={(event) => updateProfileField("serves", event.target.value)} type="text" placeholder={categoryGuide.serves} />
+                        <div className="quick-options">
+                          {predefinedOptions.serves.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("serves", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("serves", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                     </div>
                   </fieldset>
@@ -680,18 +782,66 @@ export default function Dashboard() {
                       <label className="input-group input-group--wide">
                         <span>Horarios de atendimento</span>
                         <textarea value={profile.availability} onChange={(event) => updateProfileField("availability", event.target.value)} rows={3} placeholder="Ex: Segunda a sabado, das 10h as 22h" />
+                        <div className="quick-options">
+                          {predefinedOptions.availability.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("availability", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("availability", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Formas de pagamento</span>
                         <textarea value={profile.payment_methods} onChange={(event) => updateProfileField("payment_methods", event.target.value)} rows={3} placeholder="Ex: Pix, dinheiro, cartao" />
+                        <div className="quick-options">
+                          {predefinedOptions.payment_methods.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("payment_methods", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("payment_methods", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="input-group input-group--wide">
                         <span>O que faz</span>
-                        <textarea value={profile.services} onChange={(event) => updateProfileField("services", event.target.value)} rows={4} placeholder="Liste os servicos, experiencias e modalidades oferecidas" />
+                        <textarea value={profile.services} onChange={(event) => updateProfileField("services", event.target.value)} rows={4} placeholder={categoryGuide.services} />
+                        <div className="quick-options">
+                          {predefinedOptions.services.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("services", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("services", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Diferenciais</span>
                         <textarea value={profile.specialties} onChange={(event) => updateProfileField("specialties", event.target.value)} rows={3} placeholder="Ex: massagem, jantar, viagem, atendimento premium" />
+                        <div className="quick-options">
+                          {predefinedOptions.specialties.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("specialties", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("specialties", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Limites e restricoes</span>
@@ -710,6 +860,18 @@ export default function Dashboard() {
                       <label className="input-group input-group--wide">
                         <span>Idiomas</span>
                         <input value={profile.languages} onChange={(event) => updateProfileField("languages", event.target.value)} type="text" placeholder="Ex: Portugues, ingles, espanhol" />
+                        <div className="quick-options">
+                          {predefinedOptions.languages.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={hasListValue("languages", option) ? "is-selected" : ""}
+                              onClick={() => toggleListValue("languages", option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
                       </label>
                     </div>
                   </fieldset>
