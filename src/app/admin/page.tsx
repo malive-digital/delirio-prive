@@ -258,6 +258,13 @@ export default function AdminDashboard() {
 
   const updateProfileApproval = async (profileId: string, status: "approved" | "rejected") => {
     setAdminActionMessage("Atualizando aceite do perfil...");
+    const profile = profiles.find((item) => item.id === profileId);
+
+    if (status === "approved" && !profile?.user_document_path) {
+      setAdminActionMessage("Nao e possivel aprovar: o perfil ainda nao enviou a documentacao em PDF.");
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -428,13 +435,27 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                       {profile.description && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{profile.description}</p>}
+                      <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                        <span style={{ padding: "0.35rem 0.7rem", borderRadius: "999px", background: profile.user_document_path ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", color: profile.user_document_path ? "#4ade80" : "#f87171", fontWeight: 800, fontSize: "0.85rem" }}>
+                          {profile.user_document_path ? "Documentacao enviada" : "Sem documentacao"}
+                        </span>
+                        {profile.user_document_name && (
+                          <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{profile.user_document_name}</span>
+                        )}
+                      </div>
                       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
                         {profile.user_document_path && (
                           <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
                             Ver PDF
                           </button>
                         )}
-                        <button className="button button--primary" type="button" onClick={() => updateProfileApproval(profile.id, "approved")}>
+                        <button
+                          className="button button--primary"
+                          type="button"
+                          disabled={!profile.user_document_path}
+                          title={!profile.user_document_path ? "Envio de documentacao obrigatorio para aprovar" : undefined}
+                          onClick={() => updateProfileApproval(profile.id, "approved")}
+                        >
                           Aprovar
                         </button>
                         <button className="button button--ghost" type="button" onClick={() => updateProfileApproval(profile.id, "rejected")}>
