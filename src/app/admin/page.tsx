@@ -32,6 +32,7 @@ type ProfileMedia = {
   public_url: string | null;
   storage_path: string;
   approval_status: "pending" | "approved" | "rejected";
+  is_cover: boolean | null;
   created_at: string | null;
   profiles?: {
     name: string | null;
@@ -147,7 +148,8 @@ export default function AdminDashboard() {
   const loadProfileMedia = async () => {
     const { data, error } = await supabase
       .from("profile_media")
-      .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,created_at,profiles(name,type,location)")
+      .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,is_cover,created_at,profiles(name,type,location)")
+      .order("is_cover", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (!error) {
@@ -191,7 +193,8 @@ export default function AdminDashboard() {
         supabase.from("subscriptions").select("*"),
         supabase
           .from("profile_media")
-          .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,created_at,profiles(name,type,location)")
+          .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,is_cover,created_at,profiles(name,type,location)")
+          .order("is_cover", { ascending: false })
           .order("created_at", { ascending: false }),
       ]);
 
@@ -408,6 +411,11 @@ export default function AdminDashboard() {
                             <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
                               {item.profiles?.type || "Categoria nao informada"} - {item.profiles?.location || "Localizacao nao informada"}
                             </p>
+                            {item.is_cover && (
+                              <span style={{ display: "inline-flex", width: "fit-content", marginTop: "0.35rem", padding: "0.25rem 0.55rem", borderRadius: "999px", background: "rgba(212,175,55,0.14)", color: "var(--gold-primary)", fontWeight: 900, fontSize: "0.75rem" }}>
+                                Foto de capa
+                              </span>
+                            )}
                             <p style={{ color: "var(--text-secondary)", margin: "0.2rem 0 0", fontSize: "0.85rem" }}>{item.file_name || "Foto enviada"}</p>
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>

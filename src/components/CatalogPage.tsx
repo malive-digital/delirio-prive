@@ -15,6 +15,14 @@ type CatalogProfile = {
   active_plan: string | null;
   is_online: boolean | null;
   profile_verified: boolean | null;
+  media_url?: string;
+};
+
+type ProfileMediaRow = {
+  profile_id: string;
+  public_url: string | null;
+  storage_path: string | null;
+  is_cover: boolean | null;
 };
 
 type CatalogPageProps = {
@@ -76,14 +84,41 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
         error = fallback.error;
       }
 
-      setProfiles(
-        (data || []).filter((profile) => {
+      const approvedProfiles = (data || []).filter((profile) => {
           const name = profile.name?.trim().toLowerCase();
           const genericNames = new Set(["modelo", "nova modelo", "perfil sem nome"]);
 
           return Boolean(name) && !genericNames.has(name || "");
-        }),
-      );
+        });
+
+      const profileIds = approvedProfiles.map((profile) => profile.id);
+      let mediaByProfile = new Map<string, string>();
+
+      if (profileIds.length) {
+        const { data: mediaData } = await supabase
+          .from("profile_media")
+          .select("profile_id,public_url,storage_path,is_cover")
+          .in("profile_id", profileIds)
+          .eq("approval_status", "approved")
+          .eq("media_type", "photo")
+          .order("is_cover", { ascending: false })
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        mediaByProfile = (mediaData || []).reduce((map, media) => {
+          const item = media as ProfileMediaRow;
+          if (!map.has(item.profile_id)) {
+            const url = item.public_url || (item.storage_path ? supabase.storage.from("profile-media").getPublicUrl(item.storage_path).data.publicUrl : "");
+            if (url) {
+              map.set(item.profile_id, url);
+            }
+          }
+
+          return map;
+        }, new Map<string, string>());
+      }
+
+      setProfiles(approvedProfiles.map((profile) => ({ ...profile, media_url: mediaByProfile.get(profile.id) || "" })));
       setLoading(false);
     };
 
@@ -225,7 +260,11 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                   const plan = getPlanConfig(profile.active_plan || "Basico");
 
                   return (
-                    <article className="profile-card" key={profile.id}>
+                    <Link className="profile-card profile-card--link" href={`/perfil?id=${profile.id}`} key={profile.id}>
+                      <div
+                        className="profile-card__media profile-card__media--one"
+                        style={profile.media_url ? { backgroundImage: `linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)), url("${profile.media_url}")` } : undefined}
+                      />
                       <div className="profile-card__body">
                         <span className="tag tag--premium">{plan.displayName}</span>
                         <h2>{profile.name || "Perfil sem nome"}</h2>
@@ -236,7 +275,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                           {profile.profile_verified && <span>Verificado</span>}
                         </div>
                       </div>
-                    </article>
+                    </Link>
                   );
                 })}
               </section>

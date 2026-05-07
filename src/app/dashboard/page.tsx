@@ -81,6 +81,7 @@ type ProfileMedia = {
   public_url: string | null;
   storage_path: string;
   approval_status: ApprovalStatus;
+  is_cover: boolean | null;
   created_at: string | null;
 };
 
@@ -272,8 +273,9 @@ export default function Dashboard() {
   const loadProfileMedia = async (profileId: string) => {
     const { data, error } = await supabase
       .from("profile_media")
-      .select("id,file_name,media_type,storage_path,public_url,approval_status,created_at")
+      .select("id,file_name,media_type,storage_path,public_url,approval_status,is_cover,created_at")
       .eq("profile_id", profileId)
+      .order("is_cover", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (!error) {
@@ -403,9 +405,18 @@ export default function Dashboard() {
     setProfile((current) => ({ ...current, is_online: nextOnlineState }));
     setStatusMessage("Atualizando status...");
 
-    const { error } = await supabase.from("profiles").upsert(buildProfilePayload({ is_online: nextOnlineState }));
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_online: nextOnlineState, updated_at: new Date().toISOString() })
+      .eq("id", userId);
 
-    setStatusMessage(error ? `Erro ao atualizar status: ${error.message}` : `Perfil ${nextOnlineState ? "online" : "offline"}.`);
+    if (error) {
+      setProfile((current) => ({ ...current, is_online: !nextOnlineState }));
+      setStatusMessage(`Erro ao atualizar status: ${error.message}`);
+      return;
+    }
+
+    setStatusMessage(`Perfil ${nextOnlineState ? "online" : "offline"}.`);
   };
 
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -433,7 +444,7 @@ export default function Dashboard() {
     setStatusMessage("Perfil salvo e enviado para aceite da administracao.");
   };
 
-  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>, isCover = false) => {
     const files = Array.from(event.target.files || []);
     if (!files.length || !userId) return;
 
@@ -444,20 +455,26 @@ export default function Dashboard() {
       return;
     }
 
-    if (imageFiles.length > availablePhotos) {
+    if (isCover && imageFiles.length > 1) {
+      setStatusMessage("Envie apenas uma foto de capa por vez.");
+      event.target.value = "";
+      return;
+    }
+
+    if (!isCover && imageFiles.length > availablePhotos) {
       setStatusMessage(`Seu plano permite mais ${availablePhotos} foto(s) neste momento.`);
       event.target.value = "";
       return;
     }
 
     setUploadingMedia(true);
-    setStatusMessage("Enviando fotos para aprovacao...");
+    setStatusMessage(isCover ? "Enviando capa para aprovacao..." : "Enviando fotos para aprovacao...");
 
     const rows = [];
 
     for (const file of imageFiles) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      const storagePath = `${userId}/foto-${Date.now()}-${safeName}`;
+      const storagePath = `${userId}/${isCover ? "capa" : "foto"}-${Date.now()}-${safeName}`;
       const { error: uploadError } = await supabase.storage.from("profile-media").upload(storagePath, file, {
         contentType: file.type,
         upsert: true,
@@ -480,6 +497,8 @@ export default function Dashboard() {
         storage_path: storagePath,
         public_url: urlData.publicUrl,
         approval_status: "pending",
+        is_cover: isCover,
+        sort_order: isCover ? -1 : 0,
       });
     }
 
@@ -493,7 +512,7 @@ export default function Dashboard() {
       return;
     }
 
-    setStatusMessage("Fotos enviadas para aprovacao.");
+    setStatusMessage(isCover ? "Capa enviada para aprovacao." : "Fotos enviadas para aprovacao.");
     await loadProfileMedia(userId);
   };
 
@@ -1021,19 +1040,31 @@ export default function Dashboard() {
                     <div>
                       <span className="section-kicker">Fotos</span>
                       <h2>Fotos para aprovacao</h2>
-                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}.</p>
+                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}. A capa tambem passa por aprovacao.</p>
                     </div>
-                    <label className={`button button--primary ${availablePhotos === 0 ? "is-disabled" : ""}`}>
-                      {uploadingMedia ? "Enviando..." : "Adicionar fotos"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleMediaUpload}
-                        disabled={uploadingMedia || availablePhotos === 0}
-                        style={{ display: "none" }}
-                      />
-                    </label>
+                    <div className="media-upload-actions">
+                      <label className="button button--ghost">
+                        {uploadingMedia ? "Enviando..." : "Adicionar capa"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => handleMediaUpload(event, true)}
+                          disabled={uploadingMedia}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+                      <label className={`button button--primary ${availablePhotos === 0 ? "is-disabled" : ""}`}>
+                        {uploadingMedia ? "Enviando..." : "Adicionar fotos"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(event) => handleMediaUpload(event)}
+                          disabled={uploadingMedia || availablePhotos === 0}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   <div className="media-approval-grid">
@@ -1047,6 +1078,7 @@ export default function Dashboard() {
                           {item.public_url ? <img src={item.public_url} alt={item.file_name || "Foto enviada"} /> : <div />}
                           <div>
                             <strong>{item.file_name || "Foto enviada"}</strong>
+                            {item.is_cover && <span data-status="cover">Capa</span>}
                             <span data-status={item.approval_status}>{mediaStatusCopy[item.approval_status]}</span>
                             <button
                               className="media-delete-button"

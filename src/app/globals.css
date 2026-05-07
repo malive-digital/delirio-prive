@@ -1608,6 +1608,10 @@ body.is-switching-category .explore {
   transition: transform 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
 }
 
+.profile-card--link {
+  color: inherit;
+}
+
 .profile-card--premium {
   min-height: 0;
 }
@@ -1689,6 +1693,14 @@ body.is-switching-category .explore {
   z-index: 1;
   padding: 1rem;
   background: linear-gradient(180deg, rgba(10, 10, 10, 0.42), rgba(10, 10, 10, 0.92));
+}
+
+.profile-card__body .tag,
+.profile-plan-tag {
+  position: static;
+  width: fit-content;
+  display: inline-flex;
+  margin-bottom: 0.7rem;
 }
 
 .profile-card--basic .profile-card__body {
@@ -2054,6 +2066,16 @@ body.is-switching-category .explore {
   object-fit: contain;
   object-position: center top;
   filter: saturate(0.95) contrast(1.05);
+}
+
+.profile-photo-placeholder {
+  min-height: inherit;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: var(--text-secondary);
+  font-weight: 800;
+  text-align: center;
 }
 
 .gallery-nav {
@@ -3012,6 +3034,13 @@ body.is-switching-category .explore {
   justify-content: flex-start;
 }
 
+.media-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .button.is-disabled {
   opacity: 0.45;
   pointer-events: none;
@@ -3067,6 +3096,11 @@ body.is-switching-category .explore {
 .media-approval-card span[data-status="rejected"] {
   background: rgba(248, 113, 113, 0.12);
   color: #f87171;
+}
+
+.media-approval-card span[data-status="cover"] {
+  background: rgba(212, 175, 55, 0.14);
+  color: var(--gold-primary);
 }
 
 .media-delete-button {
