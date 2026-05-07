@@ -53,6 +53,7 @@ const formatList = (value: string | null) => value?.split(",").map((item) => ite
 export default function PerfilPage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -104,7 +105,23 @@ export default function PerfilPage() {
       .filter(Boolean),
     [mediaItems],
   );
+  const selectedPhoto = photos[selectedPhotoIndex] || photos[0] || "";
+  const selectedPhotoAlt = `${profile?.name || "Perfil"} - foto ${selectedPhotoIndex + 1}`;
   const backHref = catalogHrefByType[profile?.type || ""] || "/mulheres";
+
+  useEffect(() => {
+    if (selectedPhotoIndex >= photos.length) {
+      setSelectedPhotoIndex(0);
+    }
+  }, [photos.length, selectedPhotoIndex]);
+
+  const showPreviousPhoto = () => {
+    setSelectedPhotoIndex((current) => (photos.length ? (current - 1 + photos.length) % photos.length : 0));
+  };
+
+  const showNextPhoto = () => {
+    setSelectedPhotoIndex((current) => (photos.length ? (current + 1) % photos.length : 0));
+  };
 
   return (
     <>
@@ -139,21 +156,44 @@ export default function PerfilPage() {
               <div className="profile-card-shell media-gallery">
                 <div className="gallery-stage">
                   {profile.profile_verified && <span className="approval-badge">Verificado</span>}
-                  <div className="gallery-zoom">
-                    {photos[0] ? (
-                      <img src={photos[0]} alt={profile.name || "Foto do perfil"} />
+                  <button
+                    className="gallery-zoom"
+                    type="button"
+                    onClick={showNextPhoto}
+                    disabled={photos.length <= 1}
+                    aria-label={photos.length > 1 ? "Abrir proxima foto" : "Foto principal"}
+                    style={selectedPhoto ? { "--gallery-photo": `url("${selectedPhoto}")` } as React.CSSProperties : undefined}
+                  >
+                    {selectedPhoto ? (
+                      <img src={selectedPhoto} alt={selectedPhotoAlt} />
                     ) : (
                       <div className="profile-photo-placeholder">Sem foto aprovada</div>
                     )}
-                  </div>
+                  </button>
+                  {photos.length > 1 && (
+                    <>
+                      <button className="gallery-nav gallery-nav--prev" type="button" onClick={showPreviousPhoto} aria-label="Foto anterior">
+                        ‹
+                      </button>
+                      <button className="gallery-nav gallery-nav--next" type="button" onClick={showNextPhoto} aria-label="Proxima foto">
+                        ›
+                      </button>
+                    </>
+                  )}
                   <span className="media-counter">{photos.length} foto(s)</span>
                 </div>
                 {photos.length > 1 && (
                   <div className="gallery-preview-grid" aria-label="Fotos aprovadas">
                     {photos.map((photo, index) => (
-                      <div className="gallery-thumb" key={photo}>
+                      <button
+                        className={`gallery-thumb ${selectedPhotoIndex === index ? "is-active" : ""}`}
+                        key={photo}
+                        type="button"
+                        onClick={() => setSelectedPhotoIndex(index)}
+                        aria-label={`Abrir foto ${index + 1}`}
+                      >
                         <img src={photo} alt={`${profile.name || "Perfil"} - foto ${index + 1}`} />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
