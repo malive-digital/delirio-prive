@@ -159,6 +159,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [deletingMediaId, setDeletingMediaId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
   const [isTrial, setIsTrial] = useState(false);
@@ -452,6 +453,41 @@ export default function Dashboard() {
 
     setStatusMessage("Fotos enviadas para aprovacao.");
     await loadProfileMedia(userId);
+  };
+
+  const handleMediaDelete = async (item: ProfileMedia) => {
+    if (!userId || deletingMediaId) return;
+
+    const shouldDelete = window.confirm("Excluir esta foto do perfil?");
+    if (!shouldDelete) return;
+
+    setDeletingMediaId(item.id);
+    setStatusMessage("Excluindo foto...");
+
+    const { error: storageError } = await supabase.storage.from("profile-media").remove([item.storage_path]);
+
+    if (storageError) {
+      setDeletingMediaId("");
+      setStatusMessage(`Erro ao excluir arquivo: ${storageError.message}`);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("profile_media")
+      .delete()
+      .eq("id", item.id)
+      .eq("user_id", userId);
+
+    setDeletingMediaId("");
+
+    if (deleteError) {
+      setStatusMessage(`Arquivo removido, mas a foto continuou na lista: ${deleteError.message}`);
+      await loadProfileMedia(userId);
+      return;
+    }
+
+    setMediaItems((current) => current.filter((mediaItem) => mediaItem.id !== item.id));
+    setStatusMessage("Foto excluida do perfil.");
   };
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -970,6 +1006,14 @@ export default function Dashboard() {
                           <div>
                             <strong>{item.file_name || "Foto enviada"}</strong>
                             <span data-status={item.approval_status}>{mediaStatusCopy[item.approval_status]}</span>
+                            <button
+                              className="media-delete-button"
+                              type="button"
+                              onClick={() => handleMediaDelete(item)}
+                              disabled={deletingMediaId === item.id}
+                            >
+                              {deletingMediaId === item.id ? "Excluindo..." : "Excluir foto"}
+                            </button>
                           </div>
                         </article>
                       ))
