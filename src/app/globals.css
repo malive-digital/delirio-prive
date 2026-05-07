@@ -1591,7 +1591,7 @@ body.is-switching-category .explore {
 
 .profile-card {
   position: relative;
-  min-height: 29rem;
+  min-height: 0;
   display: grid;
   grid-template-rows: 1fr auto;
   border: 1px solid rgba(245, 230, 200, 0.14);
@@ -1603,12 +1603,12 @@ body.is-switching-category .explore {
 }
 
 .profile-card--premium {
-  min-height: 23rem;
+  min-height: 0;
 }
 
 .profile-card--basic {
   min-height: 0;
-  aspect-ratio: 1;
+  aspect-ratio: 3 / 4;
   grid-template-rows: 1fr;
   border-radius: 0.7rem;
   box-shadow: 0 18px 52px rgba(0, 0, 0, 0.38);
@@ -1638,23 +1638,24 @@ body.is-switching-category .explore {
 
 .profile-card__media {
   position: relative;
-  min-height: 20.5rem;
+  min-height: 0;
+  aspect-ratio: 3 / 4;
   background:
     linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)),
     var(--profile-art);
-  background-size: cover, contain;
-  background-position: center, center top;
+  background-size: cover, cover;
+  background-position: center, center;
   background-repeat: no-repeat;
   transition: transform 380ms ease;
 }
 
 .profile-card--premium .profile-card__media {
-  min-height: 15.5rem;
+  min-height: 0;
 }
 
 .profile-card--basic .profile-card__media {
   min-height: 0;
-  aspect-ratio: 1;
+  aspect-ratio: 3 / 4;
 }
 
 .profile-card:hover .profile-card__media {
