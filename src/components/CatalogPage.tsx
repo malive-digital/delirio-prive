@@ -57,20 +57,31 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
 
   useEffect(() => {
     const loadProfiles = async () => {
-      const { data } = await supabase
+      let { data, error } = await supabase
         .from("profiles")
         .select("id,type,name,location,state_uf,description,active_plan,is_online,profile_verified")
         .eq("type", type)
         .eq("profile_approval_status", "approved")
         .order("updated_at", { ascending: false });
 
+      if (error) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("id,type,name,location,description,active_plan,is_online,profile_verified")
+          .eq("type", type)
+          .eq("profile_approval_status", "approved")
+          .order("updated_at", { ascending: false });
+
+        data = (fallback.data || []).map((profile) => ({ ...profile, state_uf: null }));
+        error = fallback.error;
+      }
+
       setProfiles(
         (data || []).filter((profile) => {
           const name = profile.name?.trim().toLowerCase();
-          const location = profile.location?.trim();
           const genericNames = new Set(["modelo", "nova modelo", "perfil sem nome"]);
 
-          return Boolean(name) && !genericNames.has(name || "") && Boolean(location);
+          return Boolean(name) && !genericNames.has(name || "");
         }),
       );
       setLoading(false);

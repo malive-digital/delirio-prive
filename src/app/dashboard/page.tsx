@@ -643,7 +643,7 @@ export default function Dashboard() {
                         value={profile.name}
                         onChange={(event) => updateProfileField("name", event.target.value)}
                         type="text"
-                        placeholder="Ex: Nova Modelo"
+                        placeholder="Ex: Ana Santos"
                       />
                     </label>
 

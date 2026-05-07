@@ -102,6 +102,10 @@ const formatDateTimeSP = (value?: string | null) => {
   }).format(new Date(value));
 };
 
+const pendingProfileDocuments = (profiles: Profile[]) => {
+  return profiles.filter((profile) => profile.profile_approval_status === "pending" && profile.user_document_path);
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("aprovacoes");
@@ -391,23 +395,64 @@ export default function AdminDashboard() {
                   {mediaItems.filter((item) => item.approval_status === "pending").length === 0 ? (
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhuma foto aguardando aceite.</p>
                   ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
+                    <div style={{ display: "grid", gap: "0.85rem" }}>
                       {mediaItems.filter((item) => item.approval_status === "pending").map((item) => (
-                        <article key={item.id} style={{ overflow: "hidden", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
-                          {item.public_url && <img src={item.public_url} alt={item.file_name || "Foto enviada"} style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }} />}
-                          <div style={{ display: "grid", gap: "0.65rem", padding: "0.9rem" }}>
-                            <strong style={{ color: "white" }}>{item.profiles?.name || item.file_name || "Foto enviada"}</strong>
-                            <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+                        <article key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                          {item.public_url ? (
+                            <img src={item.public_url} alt={item.file_name || "Foto enviada"} style={{ width: "4.5rem", height: "4.5rem", objectFit: "cover", borderRadius: "0.45rem" }} />
+                          ) : (
+                            <div style={{ width: "4.5rem", height: "4.5rem", borderRadius: "0.45rem", background: "rgba(245,230,200,0.08)" }} />
+                          )}
+                          <div>
+                            <strong style={{ color: "white" }}>{item.profiles?.name || "Perfil sem nome"}</strong>
+                            <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
                               {item.profiles?.type || "Categoria nao informada"} - {item.profiles?.location || "Localizacao nao informada"}
                             </p>
-                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                              <button className="button button--primary" type="button" onClick={() => updateProfileMediaApproval(item.id, "approved")}>
-                                Aprovar foto
-                              </button>
-                              <button className="button button--ghost" type="button" onClick={() => updateProfileMediaApproval(item.id, "rejected")}>
-                                Recusar
-                              </button>
-                            </div>
+                            <p style={{ color: "var(--text-secondary)", margin: "0.2rem 0 0", fontSize: "0.85rem" }}>{item.file_name || "Foto enviada"}</p>
+                          </div>
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            {item.public_url && (
+                              <a className="button button--ghost" href={item.public_url} target="_blank" rel="noreferrer">
+                                Visualizar
+                              </a>
+                            )}
+                            <button className="button button--primary" type="button" onClick={() => updateProfileMediaApproval(item.id, "approved")}>
+                              Aprovar
+                            </button>
+                            <button className="button button--ghost" type="button" onClick={() => updateProfileMediaApproval(item.id, "rejected")}>
+                              Recusar
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Documentos aguardando aceite</h3>
+                  {pendingProfileDocuments(profiles).length === 0 ? (
+                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum documento aguardando aceite.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: "0.85rem" }}>
+                      {pendingProfileDocuments(profiles).map((profile) => (
+                        <article key={profile.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                          <div>
+                            <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
+                            <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
+                              {profile.user_document_name || "Documento PDF enviado"}
+                            </p>
+                          </div>
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
+                              Visualizar
+                            </button>
+                            <button className="button button--primary" type="button" onClick={() => updateProfileApproval(profile.id, "approved")}>
+                              Aprovar perfil
+                            </button>
+                            <button className="button button--ghost" type="button" onClick={() => updateProfileApproval(profile.id, "rejected")}>
+                              Recusar
+                            </button>
                           </div>
                         </article>
                       ))}
@@ -468,18 +513,6 @@ export default function AdminDashboard() {
                   )}
                 </section>
               </div>
-            </div>
-          )}
-
-          {!loading && activeTab === "aprovacoes_old" && (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Análise</h2>
-                <span style={{ padding: "0.4rem 1rem", background: "rgba(34,197,94,0.1)", color: "#4ade80", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>0 pendentes</span>
-              </div>
-              <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-                Não há tabela de mídia publicada na base Supabase. A fila fica vazia até os uploads reais serem persistidos.
-              </p>
             </div>
           )}
 
