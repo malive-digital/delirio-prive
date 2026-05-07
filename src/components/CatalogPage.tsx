@@ -34,6 +34,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
         .from("profiles")
         .select("id,type,name,location,description,active_plan,is_online,profile_verified")
         .eq("type", type)
+        .eq("profile_approval_status", "approved")
         .order("updated_at", { ascending: false });
 
       setProfiles(data || []);

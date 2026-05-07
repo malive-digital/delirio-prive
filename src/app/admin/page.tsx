@@ -10,9 +10,15 @@ type Profile = {
   id: string;
   type: string | null;
   name: string | null;
+  whatsapp: string | null;
+  location: string | null;
+  description: string | null;
   active_plan: string | null;
   is_online: boolean | null;
   profile_verified: boolean | null;
+  profile_approval_status: "pending" | "approved" | "rejected" | null;
+  user_document_path: string | null;
+  user_document_name: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -77,6 +83,7 @@ export default function AdminDashboard() {
   const [partnershipStatus, setPartnershipStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando dados reais da base...");
+  const [adminActionMessage, setAdminActionMessage] = useState("");
 
   const loadPartnerships = async () => {
     const { data } = await supabase
@@ -86,6 +93,21 @@ export default function AdminDashboard() {
       .order("created_at", { ascending: false });
 
     setPartnerships(data || []);
+  };
+
+  const loadProfiles = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      setMessage(`Não foi possível carregar perfis: ${error.message}`);
+      return;
+    }
+
+    setProfiles(data || []);
+    setMessage("Dados carregados da base Supabase.");
   };
 
   useEffect(() => {
@@ -119,7 +141,7 @@ export default function AdminDashboard() {
       const [profilesResult, subscriptionsResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,type,name,active_plan,is_online,profile_verified,created_at,updated_at")
+          .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
           .order("updated_at", { ascending: false }),
         supabase.from("subscriptions").select("*"),
       ]);
@@ -185,6 +207,44 @@ export default function AdminDashboard() {
     await loadPartnerships();
   };
 
+  const updateProfileApproval = async (profileId: string, status: "approved" | "rejected") => {
+    setAdminActionMessage("Atualizando aceite do perfil...");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        profile_approval_status: status,
+        profile_verified: status === "approved",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
+
+    if (error) {
+      setAdminActionMessage(`Erro ao atualizar perfil: ${error.message}`);
+      return;
+    }
+
+    setAdminActionMessage(status === "approved" ? "Perfil aprovado." : "Perfil recusado.");
+    await loadProfiles();
+  };
+
+  const viewUserDocument = async (path: string | null) => {
+    if (!path) return;
+
+    const { data, error } = await supabase.storage.from("user-documents").createSignedUrl(path, 60 * 10);
+    if (error || !data?.signedUrl) {
+      setAdminActionMessage(`Não foi possível abrir o documento: ${error?.message || "URL indisponível"}`);
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="entry-page" style={{ overflowX: "hidden" }}>
       <header className="app-header" style={{ borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
@@ -235,6 +295,53 @@ export default function AdminDashboard() {
           {loading && <p style={{ color: "var(--text-secondary)" }}>Carregando...</p>}
 
           {!loading && activeTab === "aprovacoes" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Aceite</h2>
+                <span style={{ padding: "0.4rem 1rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length} pendente(s)
+                </span>
+              </div>
+              {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
+              {profiles.filter((profile) => profile.profile_approval_status === "pending").length === 0 ? (
+                <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil aguardando aceite.</p>
+              ) : (
+                <div style={{ display: "grid", gap: "1rem" }}>
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending").map((profile) => (
+                    <article key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+                        <div>
+                          <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
+                          <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
+                            {profile.type || "Categoria nao informada"} - {profile.location || "Localizacao nao informada"}
+                          </p>
+                        </div>
+                        <span style={{ color: profile.is_online ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+                          {profile.is_online ? "Online" : "Offline"}
+                        </span>
+                      </div>
+                      {profile.description && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{profile.description}</p>}
+                      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                        {profile.user_document_path && (
+                          <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
+                            Ver PDF
+                          </button>
+                        )}
+                        <button className="button button--primary" type="button" onClick={() => updateProfileApproval(profile.id, "approved")}>
+                          Aprovar
+                        </button>
+                        <button className="button button--ghost" type="button" onClick={() => updateProfileApproval(profile.id, "rejected")}>
+                          Recusar
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!loading && activeTab === "aprovacoes_old" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Análise</h2>

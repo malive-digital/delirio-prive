@@ -15,6 +15,7 @@ export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +23,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    localStorage.setItem("delirioSessionPersistence", rememberMe ? "local" : "session");
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -218,6 +220,14 @@ export default function Login() {
           </label>
 
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-0.5rem" }}>
+            <label style={{ marginRight: "auto", display: "inline-flex", alignItems: "center", gap: "0.45rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              Permanecer logado
+            </label>
             <Link
               href="#"
               style={{ fontSize: "0.85rem", color: "var(--gold-primary)", textDecoration: "underline" }}
