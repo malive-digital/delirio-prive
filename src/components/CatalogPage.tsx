@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 type CatalogProfile = {
   id: string;
@@ -192,7 +193,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
           <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
-          <Link className="login-link" href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 
@@ -274,8 +275,8 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                       <div className="profile-card__body">
                         <span className="tag tag--premium">{plan.displayName}</span>
                         <h2>{profile.name || "Perfil sem nome"}</h2>
-                        <p>{[profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Localizacao nao informada"}</p>
-                        {profile.description && <p>{profile.description}</p>}
+                        <p className="profile-card__location">{[profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Localizacao nao informada"}</p>
+                        {profile.description && <p className="profile-card__description">{profile.description}</p>}
                         <div className="trust-row">
                           {profile.is_online && <span>Online</span>}
                           {profile.profile_verified && <span>Verificado</span>}

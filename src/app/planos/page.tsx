@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { getPlanConfig } from "@/lib/plans";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 export default function Cobranca() {
   const [selectedPlan, setSelectedPlan] = useState("Top Privê");
@@ -47,7 +48,7 @@ export default function Cobranca() {
           <Link href="/favoritos">Favoritos</Link>
           <Link className="is-active" href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
-          <Link className="login-link" href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 

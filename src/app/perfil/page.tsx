@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 type PublicProfile = {
   id: string;
@@ -143,7 +144,7 @@ export default function PerfilPage() {
           <Link href="/mulheres">Mulheres</Link>
           <Link href="/homens">Homens</Link>
           <Link href="/travestis">Trans</Link>
-          <Link className="login-link" href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 

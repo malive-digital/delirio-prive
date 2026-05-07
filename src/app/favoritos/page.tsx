@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 export default function FavoritosPage() {
   return (
@@ -13,7 +14,7 @@ export default function FavoritosPage() {
           <Link className="is-active" href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
-          <Link className="login-link" href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 

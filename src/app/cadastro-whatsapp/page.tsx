@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 const adminWhatsapp = "5511999999999";
 const displayWhatsapp = "(11) 99999-9999";
@@ -28,7 +29,7 @@ function CadastroWhatsappContent() {
           <Link href="/">Início</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
-          <Link href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +18,31 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const redirectLoggedUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) return;
+
+      const userId = session.user.id;
+      const userEmail = session.user.email?.toLowerCase() || "";
+      const [roleResult, legacyAdminResult] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+        supabase.from("admin_users").select("user_id").eq("user_id", userId).maybeSingle(),
+      ]);
+
+      router.replace(
+        roleResult.data?.role === "admin" || legacyAdminResult.data || ADMIN_EMAILS.includes(userEmail)
+          ? "/admin"
+          : "/dashboard",
+      );
+    };
+
+    redirectLoggedUser();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

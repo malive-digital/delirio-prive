@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 export default function Home() {
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function Home() {
           <a href="/favoritos">Favoritos</a>
           <a href="/planos">Planos</a>
           <a href="/parcerias-promocoes">Parcerias</a>
-          <a className="login-link" href="/login">Entrar</a>
+          <AuthNavLink />
         </nav>
       </header>
 

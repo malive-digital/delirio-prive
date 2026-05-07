@@ -1,10 +1,12 @@
+import { AuthNavLink } from "@/components/AuthNavLink";
+
 export default function Page() {
   return (
     <>
 <header className="app-header">
       <a className="brand" href="/index"><span className="brand__mark">DP</span><span>Delírio Privê</span></a>
       <nav className="app-nav" aria-label="Navegação">
-        <a href="/index">Início</a><a href="/dashboard">Dashboard</a><a href="/planos">Planos</a><a className="login-link" href="/login">Entrar</a>
+        <a href="/index">Início</a><a href="/dashboard">Dashboard</a><a href="/planos">Planos</a><AuthNavLink />
       </nav>
     </header>
     <main className="app-page">

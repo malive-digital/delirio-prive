@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { AuthNavLink } from "@/components/AuthNavLink";
 
 type PartnershipPromotion = {
   id: string;
@@ -45,7 +46,7 @@ export default function ParceriasPromocoes() {
           <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link className="is-active" href="/parcerias-promocoes">Parcerias</Link>
-          <Link className="login-link" href="/login">Entrar</Link>
+          <AuthNavLink />
         </nav>
       </header>
 

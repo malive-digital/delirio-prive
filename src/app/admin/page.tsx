@@ -76,6 +76,19 @@ const emptyPartnershipForm = {
   is_active: true,
 };
 
+const DOCUMENTS_PER_PAGE = 10;
+const PROFILES_PER_PAGE = 10;
+
+const emptyProfileEditForm = {
+  name: "",
+  type: "mulher",
+  whatsapp: "",
+  location: "",
+  active_plan: "Basico",
+  is_online: false,
+  profile_approval_status: "pending" as "pending" | "approved",
+};
+
 const normalizeProfileMediaRows = (rows: unknown[]): ProfileMedia[] => {
   return rows.map((row) => {
     const item = row as ProfileMedia & { profiles?: ProfileMedia["profiles"] | ProfileMedia["profiles"][] };
@@ -120,6 +133,11 @@ export default function AdminDashboard() {
   const [partnerships, setPartnerships] = useState<PartnershipPromotion[]>([]);
   const [partnershipForm, setPartnershipForm] = useState(emptyPartnershipForm);
   const [partnershipStatus, setPartnershipStatus] = useState("");
+  const [documentSearch, setDocumentSearch] = useState("");
+  const [documentPage, setDocumentPage] = useState(1);
+  const [profilePage, setProfilePage] = useState(1);
+  const [editingProfileId, setEditingProfileId] = useState("");
+  const [profileEditForm, setProfileEditForm] = useState(emptyProfileEditForm);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Carregando dados reais da base...");
   const [adminActionMessage, setAdminActionMessage] = useState("");
@@ -233,6 +251,47 @@ export default function AdminDashboard() {
   }, [profiles]);
 
   const activeProfiles = profiles.filter((profile) => profile.is_online || profile.profile_verified).length;
+  const manageableProfiles = useMemo(() => {
+    const genericNames = new Set(["modelo", "nova modelo", "perfil sem nome"]);
+
+    return profiles.filter((profile) => {
+      const status = profile.profile_approval_status;
+      const name = profile.name?.trim().toLowerCase() || "";
+
+      return Boolean(name) && !genericNames.has(name) && (status === "approved" || status === "pending");
+    });
+  }, [profiles]);
+  const profilePageCount = Math.max(1, Math.ceil(manageableProfiles.length / PROFILES_PER_PAGE));
+  const visibleManageableProfiles = manageableProfiles.slice(
+    (profilePage - 1) * PROFILES_PER_PAGE,
+    profilePage * PROFILES_PER_PAGE,
+  );
+  const documentProfiles = useMemo(() => {
+    const normalizedSearch = documentSearch.trim().toLowerCase();
+
+    return allProfileDocuments(profiles).filter((profile) => {
+      if (!normalizedSearch) return true;
+
+      return (profile.name || "").toLowerCase().includes(normalizedSearch);
+    });
+  }, [documentSearch, profiles]);
+  const documentPageCount = Math.max(1, Math.ceil(documentProfiles.length / DOCUMENTS_PER_PAGE));
+  const visibleDocumentProfiles = documentProfiles.slice(
+    (documentPage - 1) * DOCUMENTS_PER_PAGE,
+    documentPage * DOCUMENTS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    if (documentPage > documentPageCount) {
+      setDocumentPage(documentPageCount);
+    }
+  }, [documentPage, documentPageCount]);
+
+  useEffect(() => {
+    if (profilePage > profilePageCount) {
+      setProfilePage(profilePageCount);
+    }
+  }, [profilePage, profilePageCount]);
 
   const handlePartnershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -323,6 +382,76 @@ export default function AdminDashboard() {
 
     setAdminActionMessage(status === "approved" ? "Foto aprovada." : "Foto recusada.");
     await loadProfileMedia();
+  };
+
+  const startProfileEdit = (profile: Profile) => {
+    setEditingProfileId(profile.id);
+    setProfileEditForm({
+      name: profile.name || "",
+      type: profile.type || "mulher",
+      whatsapp: profile.whatsapp || "",
+      location: profile.location || "",
+      active_plan: profile.active_plan || "Basico",
+      is_online: Boolean(profile.is_online),
+      profile_approval_status: profile.profile_approval_status === "approved" ? "approved" : "pending",
+    });
+  };
+
+  const cancelProfileEdit = () => {
+    setEditingProfileId("");
+    setProfileEditForm(emptyProfileEditForm);
+  };
+
+  const saveProfileEdit = async () => {
+    if (!editingProfileId) return;
+
+    setAdminActionMessage("Salvando perfil...");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        name: profileEditForm.name.trim() || null,
+        type: profileEditForm.type,
+        whatsapp: profileEditForm.whatsapp.trim() || null,
+        location: profileEditForm.location.trim() || null,
+        active_plan: profileEditForm.active_plan,
+        is_online: profileEditForm.is_online,
+        profile_approval_status: profileEditForm.profile_approval_status,
+        profile_verified: profileEditForm.profile_approval_status === "approved",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", editingProfileId);
+
+    if (error) {
+      setAdminActionMessage(`Erro ao salvar perfil: ${error.message}`);
+      return;
+    }
+
+    setAdminActionMessage("Perfil atualizado.");
+    cancelProfileEdit();
+    await loadProfiles();
+  };
+
+  const deleteProfile = async (profile: Profile) => {
+    const confirmed = window.confirm(`Excluir o perfil de ${profile.name || "sem nome"}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    setAdminActionMessage("Excluindo perfil...");
+
+    await supabase.from("profile_media").delete().eq("profile_id", profile.id);
+    const { error } = await supabase.from("profiles").delete().eq("id", profile.id);
+
+    if (error) {
+      setAdminActionMessage(`Erro ao excluir perfil: ${error.message}`);
+      return;
+    }
+
+    if (editingProfileId === profile.id) {
+      cancelProfileEdit();
+    }
+
+    setAdminActionMessage("Perfil excluído.");
+    await Promise.all([loadProfiles(), loadProfileMedia()]);
   };
 
   const viewUserDocument = async (path: string | null) => {
@@ -534,36 +663,73 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Documentação dos cadastrados</h2>
                 <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                  {allProfileDocuments(profiles).length} documento(s) enviado(s)
+                  {documentProfiles.length} documento(s) encontrado(s)
                 </span>
               </div>
               {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
 
-              {profiles.length === 0 ? (
-                <p style={{ color: "var(--text-secondary)" }}>Nenhum perfil encontrado.</p>
+              <label className="input-group" style={{ maxWidth: "420px", marginBottom: "1rem" }}>
+                <span>Pesquisar por nome</span>
+                <input
+                  type="search"
+                  value={documentSearch}
+                  onChange={(event) => {
+                    setDocumentSearch(event.target.value);
+                    setDocumentPage(1);
+                  }}
+                  placeholder="Digite o nome da modelo"
+                  style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}
+                />
+              </label>
+
+              {documentProfiles.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)" }}>Nenhuma modelo com documento encontrada.</p>
               ) : (
                 <div style={{ display: "grid", gap: "0.85rem" }}>
-                  {profiles.map((profile) => (
+                  {visibleDocumentProfiles.map((profile) => (
                     <article key={profile.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "1rem", alignItems: "center", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                       <div style={{ minWidth: 0 }}>
                         <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
                         <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
                           {profile.type || "Categoria nao informada"} - {profile.location || "Localizacao nao informada"}
                         </p>
-                        <p style={{ color: profile.user_document_path ? "#4ade80" : "#f87171", margin: "0.35rem 0 0", fontWeight: 800 }}>
-                          {profile.user_document_name || (profile.user_document_path ? "Documento enviado" : "Sem documentacao")}
+                        <p style={{ color: "#4ade80", margin: "0.35rem 0 0", fontWeight: 800 }}>
+                          {profile.user_document_name || "Documento enviado"}
                         </p>
                       </div>
                       <button
                         className="button button--ghost"
                         type="button"
-                        disabled={!profile.user_document_path}
                         onClick={() => viewUserDocument(profile.user_document_path)}
                       >
                         Visualizar
                       </button>
                     </article>
                   ))}
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                    <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                      Página {documentPage} de {documentPageCount}
+                    </span>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        disabled={documentPage <= 1}
+                        onClick={() => setDocumentPage((page) => Math.max(1, page - 1))}
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        disabled={documentPage >= documentPageCount}
+                        onClick={() => setDocumentPage((page) => Math.min(documentPageCount, page + 1))}
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -572,39 +738,62 @@ export default function AdminDashboard() {
           {!loading && activeTab === "perfis" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Catálogo de Perfis</h2>
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>{profiles.length} perfil(is) na base</span>
+                <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Gerenciar Perfis</h2>
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>{manageableProfiles.length} perfil(is) aprovado(s) ou aguardando aprovação</span>
               </div>
 
-              {profiles.length === 0 ? (
+              {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
+
+              {manageableProfiles.length === 0 ? (
                 <p style={{ color: "var(--text-secondary)" }}>Nenhum perfil encontrado.</p>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "760px" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
-                      <th style={{ padding: "1rem" }}>Perfil</th>
-                      <th style={{ padding: "1rem" }}>Categoria</th>
-                      <th style={{ padding: "1rem" }}>Plano</th>
-                      <th style={{ padding: "1rem" }}>Status</th>
-                      <th style={{ padding: "1rem" }}>Atualizado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profiles.map((profile) => (
-                      <tr key={profile.id} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                        <td style={{ padding: "1rem" }}><strong>{profile.name || "Sem nome"}</strong></td>
-                        <td style={{ padding: "1rem", color: "var(--text-secondary)", textTransform: "capitalize" }}>{profile.type || "Não informado"}</td>
-                        <td style={{ padding: "1rem" }}>{getPlanConfig(profile.active_plan || "Basico").displayName}</td>
-                        <td style={{ padding: "1rem" }}>
-                          <span style={{ color: profile.profile_verified ? "#4ade80" : "#eab308", fontWeight: "bold" }}>
-                            {profile.profile_verified ? "Verificado" : "Aguardando verificação"}
+                <div style={{ display: "grid", gap: "0.85rem" }}>
+                  {visibleManageableProfiles.map((profile) => (
+                    <article key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(8rem, 0.7fr) minmax(8rem, 0.7fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ color: "white" }}>{profile.name}</strong>
+                          <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>{profile.location || "Localização não informada"}</p>
+                        </div>
+                        <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>{profile.type || "Não informado"}</span>
+                        <span style={{ color: "white" }}>{getPlanConfig(profile.active_plan || "Basico").displayName}</span>
+                        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <span style={{ width: "100%", color: profile.profile_approval_status === "approved" ? "#4ade80" : "#eab308", fontWeight: "bold", textAlign: "right" }}>
+                            {profile.profile_approval_status === "approved" ? "Aprovado" : "Aguardando aprovação"}
                           </span>
-                        </td>
-                        <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{formatDateTimeSP(profile.updated_at || profile.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <button className="button button--ghost" type="button" onClick={() => startProfileEdit(profile)}>Editar</button>
+                          <button className="button button--ghost" type="button" onClick={() => deleteProfile(profile)}>Excluir</button>
+                        </div>
+                      </div>
+
+                      {editingProfileId === profile.id && (
+                        <div style={{ display: "grid", gap: "1rem", padding: "1rem", borderRadius: "0.65rem", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(245,230,200,0.08)" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
+                            <label className="input-group"><span>Nome</span><input value={profileEditForm.name} onChange={(event) => setProfileEditForm({ ...profileEditForm, name: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
+                            <label className="input-group"><span>Categoria</span><select value={profileEditForm.type} onChange={(event) => setProfileEditForm({ ...profileEditForm, type: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="mulher">Mulher</option><option value="homem">Homem</option><option value="trans">Trans</option></select></label>
+                            <label className="input-group"><span>WhatsApp</span><input value={profileEditForm.whatsapp} onChange={(event) => setProfileEditForm({ ...profileEditForm, whatsapp: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
+                            <label className="input-group"><span>Localização</span><input value={profileEditForm.location} onChange={(event) => setProfileEditForm({ ...profileEditForm, location: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
+                            <label className="input-group"><span>Plano</span><select value={profileEditForm.active_plan} onChange={(event) => setProfileEditForm({ ...profileEditForm, active_plan: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="Basico">Básico</option><option value="Premium">Premium</option><option value="Top Prive">Top Privê</option></select></label>
+                            <label className="input-group"><span>Status</span><select value={profileEditForm.profile_approval_status} onChange={(event) => setProfileEditForm({ ...profileEditForm, profile_approval_status: event.target.value as "pending" | "approved" })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="pending">Aguardando aprovação</option><option value="approved">Aprovado</option></select></label>
+                            <label style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", color: "var(--text-secondary)" }}><input type="checkbox" checked={profileEditForm.is_online} onChange={(event) => setProfileEditForm({ ...profileEditForm, is_online: event.target.checked })} />Online</label>
+                          </div>
+                          <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
+                            <button className="button button--primary" type="button" onClick={saveProfileEdit}>Salvar alterações</button>
+                            <button className="button button--ghost" type="button" onClick={cancelProfileEdit}>Cancelar</button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                    <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Página {profilePage} de {profilePageCount}</span>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button className="button button--ghost" type="button" disabled={profilePage <= 1} onClick={() => setProfilePage((page) => Math.max(1, page - 1))}>Anterior</button>
+                      <button className="button button--ghost" type="button" disabled={profilePage >= profilePageCount} onClick={() => setProfilePage((page) => Math.min(profilePageCount, page + 1))}>Próxima</button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}

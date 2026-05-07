@@ -473,6 +473,7 @@ export default function Dashboard() {
 
     setProfile((current) => ({ ...current, profile_approval_status: "pending" }));
     setStatusMessage("Perfil salvo e enviado para aceite da administração.");
+    handleTabChange("resumo");
   };
 
   const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>, isCover = false) => {
