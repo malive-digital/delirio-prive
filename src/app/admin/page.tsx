@@ -65,13 +65,12 @@ export default function AdminDashboard() {
       const userEmail = user.email.toLowerCase();
       let isAdmin = ADMIN_EMAILS.includes(userEmail);
 
-      const adminResult = await supabase
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [roleResult, legacyAdminResult] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle(),
+        supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle(),
+      ]);
 
-      if (adminResult.data) {
+      if (roleResult.data?.role === "admin" || legacyAdminResult.data) {
         isAdmin = true;
       }
 

@@ -37,7 +37,12 @@ export default function Login() {
     const userId = data.user.id;
     const userEmail = data.user.email?.toLowerCase() || "";
 
-    if (ADMIN_EMAILS.includes(userEmail)) {
+    const [roleResult, legacyAdminResult] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      supabase.from("admin_users").select("user_id").eq("user_id", userId).maybeSingle(),
+    ]);
+
+    if (roleResult.data?.role === "admin" || legacyAdminResult.data || ADMIN_EMAILS.includes(userEmail)) {
       router.push("/admin");
       return;
     }
