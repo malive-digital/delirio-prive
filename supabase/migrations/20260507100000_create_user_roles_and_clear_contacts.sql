@@ -13,6 +13,13 @@ create table if not exists public.user_roles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.admin_users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role public.app_role not null default 'admin',
+  created_at timestamptz not null default now()
+);
+
 alter table public.admin_users
 add column if not exists role public.app_role not null default 'admin';
 
