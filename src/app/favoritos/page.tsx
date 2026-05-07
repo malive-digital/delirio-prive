@@ -31,12 +31,6 @@ export default function FavoritosPage() {
         </section>
       </main>
 
-      <nav className="bottom-nav" aria-label="Navegação mobile">
-        <Link href="/">Explorar</Link>
-        <Link className="is-active" href="/favoritos">Favoritos</Link>
-        <Link href="/planos">Planos</Link>
-        <Link href="/login">Conta</Link>
-      </nav>
     </>
   );
 }

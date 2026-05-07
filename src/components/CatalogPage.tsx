@@ -245,12 +245,6 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
         </section>
       </main>
 
-      <nav className="bottom-nav" aria-label="Navegacao mobile">
-        <Link href="/favoritos">Favoritos</Link>
-        <Link href="/planos">Planos</Link>
-        <Link href="/parcerias-promocoes">Parcerias</Link>
-        <Link href="/login">Conta</Link>
-      </nav>
     </>
   );
 }

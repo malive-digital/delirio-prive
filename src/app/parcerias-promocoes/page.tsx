@@ -91,12 +91,6 @@ export default function ParceriasPromocoes() {
         )}
       </main>
 
-      <nav className="bottom-nav" aria-label="Navegação mobile">
-        <Link href="/">Explorar</Link>
-        <Link href="/favoritos">Favoritos</Link>
-        <Link href="/planos">Planos</Link>
-        <Link className="is-active" href="/parcerias-promocoes">Parcerias</Link>
-      </nav>
     </>
   );
 }

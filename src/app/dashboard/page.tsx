@@ -10,6 +10,12 @@ const TRIAL_DAYS = 7;
 
 type DashboardTab = "resumo" | "editar" | "fotos" | "documento";
 
+const DASHBOARD_TABS: DashboardTab[] = ["resumo", "editar", "fotos", "documento"];
+
+function isDashboardTab(value: string | null): value is DashboardTab {
+  return Boolean(value && DASHBOARD_TABS.includes(value as DashboardTab));
+}
+
 type ApprovalStatus = "pending" | "approved" | "rejected";
 
 type ProfileForm = {
@@ -167,6 +173,37 @@ export default function Dashboard() {
   const usedPhotos = mediaItems.filter((item) => item.media_type === "photo" && item.approval_status !== "rejected").length;
   const availablePhotos = Math.max(0, currentPlan.limits.photos - usedPhotos);
 
+  useEffect(() => {
+    const syncTabFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      const hashTab = window.location.hash.replace("#", "");
+      const nextTab = isDashboardTab(tabParam) ? tabParam : isDashboardTab(hashTab) ? hashTab : null;
+
+      if (nextTab) {
+        setActiveTab(nextTab);
+      }
+    };
+
+    syncTabFromUrl();
+    window.addEventListener("popstate", syncTabFromUrl);
+
+    return () => window.removeEventListener("popstate", syncTabFromUrl);
+  }, []);
+
+  const handleTabChange = (tab: DashboardTab) => {
+    setActiveTab(tab);
+
+    const url = new URL(window.location.href);
+    if (tab === "resumo") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", tab);
+    }
+    url.hash = "";
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("hasActivePlan");
@@ -198,13 +235,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     const checkAccess = async () => {
-      const hasPlan = localStorage.getItem("hasActivePlan");
-
-      if (!hasPlan) {
-        router.push("/cobranca");
-        return;
-      }
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -216,7 +246,19 @@ export default function Dashboard() {
 
       setUserId(user.id);
 
-      if (hasPlan === "trial") {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select(
+          "name,type,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
+        )
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const storedPlan = localStorage.getItem("hasActivePlan") || sessionStorage.getItem("hasActivePlan");
+      const savedPlan = typeof profileData?.active_plan === "string" ? profileData.active_plan.trim() : "";
+      let hasDashboardAccess = Boolean(storedPlan || savedPlan);
+
+      if (storedPlan === "trial") {
         const trialKey = `trial_start_${user.id}`;
         const trialStart = localStorage.getItem(trialKey);
 
@@ -226,22 +268,19 @@ export default function Dashboard() {
 
           if (daysLeft <= 0) {
             localStorage.removeItem("hasActivePlan");
-            router.push("/cobranca");
-            return;
+            sessionStorage.removeItem("hasActivePlan");
+            hasDashboardAccess = Boolean(savedPlan);
+          } else {
+            setIsTrial(true);
+            setTrialDaysLeft(daysLeft);
           }
-
-          setIsTrial(true);
-          setTrialDaysLeft(daysLeft);
         }
       }
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select(
-          "name,type,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+      if (!hasDashboardAccess) {
+        router.push("/cobranca");
+        return;
+      }
 
       if (profileData) {
         const loadedProfile = {
@@ -252,6 +291,9 @@ export default function Dashboard() {
         } as ProfileForm;
 
         setProfile(loadedProfile);
+        if (savedPlan && !storedPlan) {
+          localStorage.setItem("hasActivePlan", savedPlan);
+        }
         await loadDocumentUrl(loadedProfile.user_document_path);
       }
 
@@ -546,7 +588,7 @@ export default function Dashboard() {
                   role="tab"
                   aria-selected={activeTab === tab.id}
                   className={activeTab === tab.id ? "is-active" : ""}
-                  onClick={() => setActiveTab(tab.id as DashboardTab)}
+                  onClick={() => handleTabChange(tab.id as DashboardTab)}
                 >
                   {tab.label}
                 </button>
