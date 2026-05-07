@@ -23,6 +23,23 @@ type Profile = {
   updated_at: string | null;
 };
 
+type ProfileMedia = {
+  id: string;
+  profile_id: string;
+  user_id: string;
+  file_name: string | null;
+  media_type: "photo" | "video";
+  public_url: string | null;
+  storage_path: string;
+  approval_status: "pending" | "approved" | "rejected";
+  created_at: string | null;
+  profiles?: {
+    name: string | null;
+    type: string | null;
+    location: string | null;
+  } | null;
+};
+
 type Subscription = {
   id?: string;
   user_id?: string;
@@ -58,6 +75,18 @@ const emptyPartnershipForm = {
   is_active: true,
 };
 
+const normalizeProfileMediaRows = (rows: unknown[]): ProfileMedia[] => {
+  return rows.map((row) => {
+    const item = row as ProfileMedia & { profiles?: ProfileMedia["profiles"] | ProfileMedia["profiles"][] };
+    const linkedProfile = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
+
+    return {
+      ...item,
+      profiles: linkedProfile || null,
+    };
+  });
+};
+
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
   .split(",")
   .map((email) => email.trim().toLowerCase())
@@ -77,6 +106,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("aprovacoes");
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [partnerships, setPartnerships] = useState<PartnershipPromotion[]>([]);
   const [partnershipForm, setPartnershipForm] = useState(emptyPartnershipForm);
@@ -110,6 +140,17 @@ export default function AdminDashboard() {
     setMessage("Dados carregados da base Supabase.");
   };
 
+  const loadProfileMedia = async () => {
+    const { data, error } = await supabase
+      .from("profile_media")
+      .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,created_at,profiles(name,type,location)")
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      setMediaItems(normalizeProfileMediaRows(data || []));
+    }
+  };
+
   useEffect(() => {
     const loadAdminData = async () => {
       const {
@@ -138,12 +179,16 @@ export default function AdminDashboard() {
         return;
       }
 
-      const [profilesResult, subscriptionsResult] = await Promise.all([
+      const [profilesResult, subscriptionsResult, mediaResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
           .order("updated_at", { ascending: false }),
         supabase.from("subscriptions").select("*"),
+        supabase
+          .from("profile_media")
+          .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,created_at,profiles(name,type,location)")
+          .order("created_at", { ascending: false }),
       ]);
 
       if (profilesResult.error) {
@@ -155,6 +200,10 @@ export default function AdminDashboard() {
 
       if (!subscriptionsResult.error) {
         setSubscriptions(subscriptionsResult.data || []);
+      }
+
+      if (!mediaResult.error) {
+        setMediaItems(normalizeProfileMediaRows(mediaResult.data || []));
       }
 
       await loadPartnerships();
@@ -233,6 +282,31 @@ export default function AdminDashboard() {
     await loadProfiles();
   };
 
+  const updateProfileMediaApproval = async (mediaId: string, status: "approved" | "rejected") => {
+    setAdminActionMessage("Atualizando aceite da foto...");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("profile_media")
+      .update({
+        approval_status: status,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", mediaId);
+
+    if (error) {
+      setAdminActionMessage(`Erro ao atualizar foto: ${error.message}`);
+      return;
+    }
+
+    setAdminActionMessage(status === "approved" ? "Foto aprovada." : "Foto recusada.");
+    await loadProfileMedia();
+  };
+
   const viewUserDocument = async (path: string | null) => {
     if (!path) return;
 
@@ -299,15 +373,48 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Aceite</h2>
                 <span style={{ padding: "0.4rem 1rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>
-                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length} pendente(s)
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length + mediaItems.filter((item) => item.approval_status === "pending").length} pendente(s)
                 </span>
               </div>
               {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
-              {profiles.filter((profile) => profile.profile_approval_status === "pending").length === 0 ? (
-                <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil aguardando aceite.</p>
-              ) : (
-                <div style={{ display: "grid", gap: "1rem" }}>
-                  {profiles.filter((profile) => profile.profile_approval_status === "pending").map((profile) => (
+
+              <div style={{ display: "grid", gap: "1.5rem" }}>
+                <section>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Fotos aguardando aceite</h3>
+                  {mediaItems.filter((item) => item.approval_status === "pending").length === 0 ? (
+                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhuma foto aguardando aceite.</p>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
+                      {mediaItems.filter((item) => item.approval_status === "pending").map((item) => (
+                        <article key={item.id} style={{ overflow: "hidden", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                          {item.public_url && <img src={item.public_url} alt={item.file_name || "Foto enviada"} style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }} />}
+                          <div style={{ display: "grid", gap: "0.65rem", padding: "0.9rem" }}>
+                            <strong style={{ color: "white" }}>{item.profiles?.name || item.file_name || "Foto enviada"}</strong>
+                            <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+                              {item.profiles?.type || "Categoria nao informada"} - {item.profiles?.location || "Localizacao nao informada"}
+                            </p>
+                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                              <button className="button button--primary" type="button" onClick={() => updateProfileMediaApproval(item.id, "approved")}>
+                                Aprovar foto
+                              </button>
+                              <button className="button button--ghost" type="button" onClick={() => updateProfileMediaApproval(item.id, "rejected")}>
+                                Recusar
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Perfis aguardando aceite</h3>
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length === 0 ? (
+                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil aguardando aceite.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: "1rem" }}>
+                      {profiles.filter((profile) => profile.profile_approval_status === "pending").map((profile) => (
                     <article key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
                         <div>
@@ -335,9 +442,11 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </article>
-                  ))}
-                </div>
-              )}
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
           )}
 

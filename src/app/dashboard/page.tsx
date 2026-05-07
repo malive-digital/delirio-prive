@@ -8,7 +8,9 @@ import { getPlanConfig } from "@/lib/plans";
 
 const TRIAL_DAYS = 7;
 
-type DashboardTab = "resumo" | "editar" | "documento";
+type DashboardTab = "resumo" | "editar" | "fotos" | "documento";
+
+type ApprovalStatus = "pending" | "approved" | "rejected";
 
 type ProfileForm = {
   name: string;
@@ -18,9 +20,19 @@ type ProfileForm = {
   description: string;
   active_plan: string;
   is_online: boolean;
-  profile_approval_status: "pending" | "approved" | "rejected";
+  profile_approval_status: ApprovalStatus;
   user_document_path: string | null;
   user_document_name: string | null;
+};
+
+type ProfileMedia = {
+  id: string;
+  file_name: string | null;
+  media_type: "photo" | "video";
+  public_url: string | null;
+  storage_path: string;
+  approval_status: ApprovalStatus;
+  created_at: string | null;
 };
 
 const emptyProfile: ProfileForm = {
@@ -51,6 +63,12 @@ const approvalCopy = {
   },
 };
 
+const mediaStatusCopy = {
+  pending: "Em analise",
+  approved: "Aprovada",
+  rejected: "Recusada",
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -58,11 +76,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
+  const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
+
+  const currentPlan = getPlanConfig(profile.active_plan || (isTrial ? "Basico" : "Top Prive"));
+  const approval = approvalCopy[profile.profile_approval_status];
+  const trialPercent = trialDaysLeft === null ? 0 : Math.max(0, Math.min(100, (trialDaysLeft / TRIAL_DAYS) * 100));
+  const usedPhotos = mediaItems.filter((item) => item.media_type === "photo" && item.approval_status !== "rejected").length;
+  const availablePhotos = Math.max(0, currentPlan.limits.photos - usedPhotos);
 
   const loadDocumentUrl = async (path: string | null) => {
     if (!path) {
@@ -72,6 +98,18 @@ export default function Dashboard() {
 
     const { data } = await supabase.storage.from("user-documents").createSignedUrl(path, 60 * 10);
     setDocumentUrl(data?.signedUrl || "");
+  };
+
+  const loadProfileMedia = async (profileId: string) => {
+    const { data, error } = await supabase
+      .from("profile_media")
+      .select("id,file_name,media_type,storage_path,public_url,approval_status,created_at")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      setMediaItems((data || []) as ProfileMedia[]);
+    }
   };
 
   useEffect(() => {
@@ -133,14 +171,12 @@ export default function Dashboard() {
         await loadDocumentUrl(loadedProfile.user_document_path);
       }
 
+      await loadProfileMedia(user.id);
       setLoading(false);
     };
 
     checkAccess();
   }, [router]);
-
-  const currentPlan = getPlanConfig(profile.active_plan || (isTrial ? "Basico" : "Top Prive"));
-  const approval = approvalCopy[profile.profile_approval_status];
 
   const buildProfilePayload = (overrides: Partial<ProfileForm> = {}) => {
     const nextProfile = { ...profile, ...overrides };
@@ -197,6 +233,70 @@ export default function Dashboard() {
 
     setProfile((current) => ({ ...current, profile_approval_status: "pending" }));
     setStatusMessage("Perfil salvo e enviado para aceite da administracao.");
+  };
+
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length || !userId) return;
+
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length !== files.length) {
+      setStatusMessage("Envie apenas fotos em formato de imagem.");
+      event.target.value = "";
+      return;
+    }
+
+    if (imageFiles.length > availablePhotos) {
+      setStatusMessage(`Seu plano permite mais ${availablePhotos} foto(s) neste momento.`);
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingMedia(true);
+    setStatusMessage("Enviando fotos para aprovacao...");
+
+    const rows = [];
+
+    for (const file of imageFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const storagePath = `${userId}/foto-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("profile-media").upload(storagePath, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+      if (uploadError) {
+        setUploadingMedia(false);
+        setStatusMessage(`Erro ao enviar ${file.name}: ${uploadError.message}`);
+        event.target.value = "";
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from("profile-media").getPublicUrl(storagePath);
+      rows.push({
+        profile_id: userId,
+        user_id: userId,
+        file_name: file.name,
+        media_type: "photo",
+        mime_type: file.type,
+        storage_path: storagePath,
+        public_url: urlData.publicUrl,
+        approval_status: "pending",
+      });
+    }
+
+    const { error } = await supabase.from("profile_media").insert(rows);
+
+    setUploadingMedia(false);
+    event.target.value = "";
+
+    if (error) {
+      setStatusMessage(`Fotos enviadas, mas nao entraram na fila: ${error.message}`);
+      return;
+    }
+
+    setStatusMessage("Fotos enviadas para aprovacao.");
+    await loadProfileMedia(userId);
   };
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,12 +367,12 @@ export default function Dashboard() {
         </nav>
       </header>
 
-      <main className="app-page dashboard" style={{ maxWidth: "1180px", margin: "0 auto" }}>
-        <div className="page-title">
+      <main className="app-page dashboard dashboard-page">
+        <div className="page-title dashboard-title">
           <div>
             <p className="eyebrow">Painel</p>
             <h1>Dashboard</h1>
-            <p className="page-intro">Gerencie seus dados, visibilidade e documentos do perfil.</p>
+            <p className="page-intro">Gerencie seus dados, visibilidade, fotos e documentos.</p>
           </div>
           <Link className="button button--primary" href="/cobranca">
             Upgrade de plano
@@ -285,20 +385,31 @@ export default function Dashboard() {
           </section>
         ) : (
           <>
-            <section className="dashboard-grid" aria-label="Resumo do perfil">
-              <article className="dashboard-panel" style={{ gridColumn: "auto" }}>
+            <section className="dashboard-summary" aria-label="Resumo do perfil">
+              <article className="dashboard-card">
                 <span className="section-kicker">Aceite</span>
                 <h2>{approval.title}</h2>
                 <p>{approval.description}</p>
               </article>
 
-              <article className="dashboard-panel" style={{ gridColumn: "auto" }}>
+              <article className="dashboard-card dashboard-card--trial">
                 <span className="section-kicker">Plano</span>
                 <h2>{currentPlan.displayName}</h2>
                 <p>{currentPlan.mediaLabel}</p>
+                {isTrial && trialDaysLeft !== null && (
+                  <div className="trial-progress" aria-label={`${trialDaysLeft} dias restantes`}>
+                    <div className="trial-progress__top">
+                      <span>Teste gratuito</span>
+                      <strong>{trialDaysLeft} dia(s)</strong>
+                    </div>
+                    <div className="trial-progress__track">
+                      <span style={{ width: `${trialPercent}%` }} />
+                    </div>
+                  </div>
+                )}
               </article>
 
-              <article className="dashboard-panel" style={{ gridColumn: "auto" }}>
+              <article className="dashboard-card">
                 <span className="section-kicker">Visibilidade</span>
                 <h2>{profile.is_online ? "Online" : "Offline"}</h2>
                 <p>{profile.is_online ? "Seu perfil esta marcado como ativo." : "Seu perfil esta marcado como inativo."}</p>
@@ -312,6 +423,7 @@ export default function Dashboard() {
               {[
                 { id: "resumo", label: "Visao Geral" },
                 { id: "editar", label: "Editar Perfil" },
+                { id: "fotos", label: "Fotos" },
                 { id: "documento", label: "Documento PDF" },
               ].map((tab) => (
                 <button
@@ -327,55 +439,69 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <section className="dashboard-panel dashboard-workspace-panel">
+            <section className="dashboard-workspace">
               {activeTab === "resumo" && (
-                <div>
-                  <span className="section-kicker">Resumo</span>
-                  <h2>Dados atuais</h2>
-                  <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
-                    <article>
-                      <strong>Nome artistico</strong>
-                      <p>{profile.name || "Nao informado"}</p>
-                    </article>
-                    <article>
-                      <strong>Categoria</strong>
-                      <p>{profile.type || "Nao informada"}</p>
-                    </article>
-                    <article>
-                      <strong>Localizacao</strong>
-                      <p>{profile.location || "Nao informada"}</p>
-                    </article>
-                    <article>
-                      <strong>WhatsApp</strong>
-                      <p>{profile.whatsapp || "Nao informado"}</p>
-                    </article>
+                <div className="dashboard-stack">
+                  <div>
+                    <span className="section-kicker">Resumo</span>
+                    <h2>Dados atuais</h2>
                   </div>
-                  {isTrial && trialDaysLeft !== null && <p>Teste gratuito ativo: {trialDaysLeft} dia(s) restante(s).</p>}
-                  {statusMessage && <p aria-live="polite">{statusMessage}</p>}
+
+                  <div className="profile-public-preview">
+                    <article className="profile-card preview-card-inline">
+                      <div className="profile-card__body">
+                        <span className="tag tag--premium">{currentPlan.displayName}</span>
+                        <h2>{profile.name || "Nome artistico"}</h2>
+                        <p>{profile.location || "Localizacao"}</p>
+                        {profile.description && <p>{profile.description}</p>}
+                        <div className="trust-row">
+                          {profile.is_online && <span>Online</span>}
+                          {profile.profile_approval_status === "approved" && <span>Verificado</span>}
+                        </div>
+                      </div>
+                    </article>
+
+                    <div className="dashboard-facts">
+                      <article>
+                        <strong>Categoria</strong>
+                        <p>{profile.type || "Nao informada"}</p>
+                      </article>
+                      <article>
+                        <strong>WhatsApp</strong>
+                        <p>{profile.whatsapp || "Nao informado"}</p>
+                      </article>
+                      <article>
+                        <strong>Fotos</strong>
+                        <p>{usedPhotos}/{currentPlan.limits.photos} usadas</p>
+                      </article>
+                    </div>
+                  </div>
+
+                  {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}
                 </div>
               )}
 
               {activeTab === "editar" && (
-                <form className="model-profile-form" onSubmit={handleSaveProfile}>
+                <form className="model-profile-form dashboard-stack" onSubmit={handleSaveProfile}>
                   <div>
                     <span className="section-kicker">Perfil publico</span>
-                    <h2>Informacoes do cadastro</h2>
-                    <p>Ao salvar, seu perfil volta para aceite da administracao antes de aparecer no catalogo.</p>
+                    <h2>Informacoes exibidas no perfil</h2>
+                    <p>Preencha aqui os dados que aparecem no card e na pagina publica do perfil.</p>
                   </div>
 
-                  <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+                  <div className="dashboard-form-grid">
                     <label className="input-group">
                       <span>Nome artistico</span>
                       <input
                         value={profile.name}
                         onChange={(event) => updateProfileField("name", event.target.value)}
                         type="text"
-                        placeholder="Seu nome publico"
+                        placeholder="Ex: Nova Modelo"
                       />
                     </label>
 
                     <label className="input-group">
-                      <span>Categoria</span>
+                      <span>Categoria exibida</span>
                       <select value={profile.type} onChange={(event) => updateProfileField("type", event.target.value)}>
                         <option value="mulher">Mulher</option>
                         <option value="homem">Homem</option>
@@ -384,7 +510,7 @@ export default function Dashboard() {
                     </label>
 
                     <label className="input-group">
-                      <span>Localizacao</span>
+                      <span>Localizacao publica</span>
                       <input
                         value={profile.location}
                         onChange={(event) => updateProfileField("location", event.target.value)}
@@ -402,15 +528,25 @@ export default function Dashboard() {
                         placeholder="(00) 00000-0000"
                       />
                     </label>
+
+                    <label className="input-group">
+                      <span>Plano exibido</span>
+                      <input value={currentPlan.displayName} type="text" readOnly />
+                    </label>
+
+                    <label className="input-group">
+                      <span>Status atual</span>
+                      <input value={profile.is_online ? "Online" : "Offline"} type="text" readOnly />
+                    </label>
                   </div>
 
                   <label className="input-group input-group--wide">
-                    <span>Descricao</span>
+                    <span>Descricao publica</span>
                     <textarea
                       value={profile.description}
                       onChange={(event) => updateProfileField("description", event.target.value)}
                       rows={6}
-                      placeholder="Descreva seu atendimento"
+                      placeholder="Texto que sera exibido no perfil"
                     />
                   </label>
 
@@ -418,16 +554,61 @@ export default function Dashboard() {
                     <button className="button button--primary" type="submit" disabled={saving}>
                       {saving ? "Salvando..." : "Salvar e enviar para aceite"}
                     </button>
-                    {statusMessage && <p aria-live="polite">{statusMessage}</p>}
+                    {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}
                   </div>
                 </form>
               )}
 
+              {activeTab === "fotos" && (
+                <div className="dashboard-stack">
+                  <div className="dashboard-section-header">
+                    <div>
+                      <span className="section-kicker">Fotos</span>
+                      <h2>Fotos para aprovacao</h2>
+                      <p>{usedPhotos}/{currentPlan.limits.photos} fotos usadas no plano {currentPlan.displayName}.</p>
+                    </div>
+                    <label className={`button button--primary ${availablePhotos === 0 ? "is-disabled" : ""}`}>
+                      {uploadingMedia ? "Enviando..." : "Adicionar fotos"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleMediaUpload}
+                        disabled={uploadingMedia || availablePhotos === 0}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="media-approval-grid">
+                    {mediaItems.length === 0 ? (
+                      <section className="empty-state empty-state--compact">
+                        <p>Nenhuma foto enviada para aprovacao.</p>
+                      </section>
+                    ) : (
+                      mediaItems.map((item) => (
+                        <article className="media-approval-card" key={item.id}>
+                          {item.public_url ? <img src={item.public_url} alt={item.file_name || "Foto enviada"} /> : <div />}
+                          <div>
+                            <strong>{item.file_name || "Foto enviada"}</strong>
+                            <span data-status={item.approval_status}>{mediaStatusCopy[item.approval_status]}</span>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+
+                  {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}
+                </div>
+              )}
+
               {activeTab === "documento" && (
-                <div>
-                  <span className="section-kicker">Documento</span>
-                  <h2>Documento em PDF</h2>
-                  <p>{profile.user_document_name || "Nenhum documento anexado."}</p>
+                <div className="dashboard-stack">
+                  <div>
+                    <span className="section-kicker">Documento</span>
+                    <h2>Documento em PDF</h2>
+                    <p>{profile.user_document_name || "Nenhum documento anexado."}</p>
+                  </div>
 
                   <div className="form-actions">
                     <label className="button button--ghost">
@@ -448,7 +629,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  {statusMessage && <p aria-live="polite">{statusMessage}</p>}
+                  {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}
                 </div>
               )}
             </section>
