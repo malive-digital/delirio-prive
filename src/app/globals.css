@@ -3995,7 +3995,11 @@ body.is-switching-category .explore {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .profile-grid--catalog-premium,
+  .profile-grid--catalog-premium {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
   .profile-grid--catalog-basic {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
@@ -4177,9 +4181,13 @@ body.is-switching-category .explore {
     min-height: 0;
   }
 
-  .profile-card--catalog-premium .profile-card__body,
+  .profile-card--catalog-premium .profile-card__body {
+    min-height: 11.8rem;
+  }
+
   .profile-card--catalog-basic .profile-card__body {
-    min-height: 9.8rem;
+    min-height: 8.9rem;
+    padding: 0.55rem;
   }
 
   .profile-card--premium .profile-card__media {
