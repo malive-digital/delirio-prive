@@ -241,7 +241,9 @@ body.is-logged-in .auth-only {
 .interest-modal__panel {
   width: min(100%, 44rem);
   max-height: calc(100dvh - 2rem);
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: clamp(1rem, 2.8vw, 1.7rem);
   border: 1px solid rgba(212, 175, 55, 0.32);
   border-radius: 1.25rem;
@@ -256,6 +258,11 @@ body.is-logged-in .auth-only {
   backdrop-filter: blur(22px) saturate(1.2);
   text-align: center;
   transform: translateY(-5px); /* Dá a sensação de estar flutuando */
+}
+
+.age-gate__panel::-webkit-scrollbar,
+.interest-modal__panel::-webkit-scrollbar {
+  display: none;
 }
 
 .age-gate__panel h2,
