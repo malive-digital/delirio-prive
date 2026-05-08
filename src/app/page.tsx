@@ -22,10 +22,7 @@ export default function Home() {
       }
     };
 
-    if (!sessionStorage.getItem("introPlayed")) {
-      setShowIntroVideo(true);
-      return;
-    }
+    setShowIntroVideo(true);
 
     if (sessionStorage.getItem("ageConfirmed")) {
       continueHomeFlow();
@@ -36,10 +33,9 @@ export default function Home() {
     return () => {
       window.removeEventListener("delirio:age-confirmed", continueHomeFlow);
     };
-  }, [router, showIntroVideo]);
+  }, [router]);
 
   const finishIntroVideo = () => {
-    sessionStorage.setItem("introPlayed", "true");
     setShowIntroVideo(false);
     window.dispatchEvent(new Event("delirio:intro-finished"));
 

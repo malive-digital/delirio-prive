@@ -4,29 +4,33 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-const isHomeIntroPending = (pathname: string) =>
-  pathname === "/" && !sessionStorage.getItem("introPlayed");
-
 export function AgeGate() {
   const pathname = usePathname();
   const [showAgeGate, setShowAgeGate] = useState(false);
   const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
 
   useEffect(() => {
+    let introPending = pathname === "/";
+
     const syncAgeGate = () => {
       if (sessionStorage.getItem("ageConfirmed")) {
         setShowAgeGate(false);
         return;
       }
 
-      setShowAgeGate(!isHomeIntroPending(pathname));
+      setShowAgeGate(!introPending);
+    };
+
+    const handleIntroFinished = () => {
+      introPending = false;
+      syncAgeGate();
     };
 
     syncAgeGate();
-    window.addEventListener("delirio:intro-finished", syncAgeGate);
+    window.addEventListener("delirio:intro-finished", handleIntroFinished);
 
     return () => {
-      window.removeEventListener("delirio:intro-finished", syncAgeGate);
+      window.removeEventListener("delirio:intro-finished", handleIntroFinished);
     };
   }, [pathname]);
 
