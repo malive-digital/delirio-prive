@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getPlanConfig } from "@/lib/plans";
+import { getPlanConfig, PLAN_LIST } from "@/lib/plans";
+import { getSubscriptionDaysLeft, getSubscriptionEndDate } from "@/lib/subscriptions";
 
 type Profile = {
   id: string;
@@ -48,6 +49,7 @@ type Subscription = {
   plan?: string;
   plan_key?: string;
   status?: string;
+  current_period_end?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -85,6 +87,7 @@ const emptyProfileEditForm = {
   whatsapp: "",
   location: "",
   active_plan: "Basico",
+  plan_days: "30",
   is_online: false,
   profile_approval_status: "pending" as "pending" | "approved",
 };
@@ -122,6 +125,12 @@ const pendingProfileDocuments = (profiles: Profile[]) => {
 
 const allProfileDocuments = (profiles: Profile[]) => {
   return profiles.filter((profile) => profile.user_document_path);
+};
+
+const getPlanAmount = (price: string) => {
+  const normalizedPrice = price.replace(/[^\d,.-]/g, "").replace(".", "").replace(",", ".");
+  const amount = Number(normalizedPrice);
+  return Number.isFinite(amount) ? amount : 0;
 };
 
 export default function AdminDashboard() {
@@ -176,6 +185,14 @@ export default function AdminDashboard() {
 
     if (!error) {
       setMediaItems(normalizeProfileMediaRows(data || []));
+    }
+  };
+
+  const loadSubscriptions = async () => {
+    const { data, error } = await supabase.from("subscriptions").select("*");
+
+    if (!error) {
+      setSubscriptions(data || []);
     }
   };
 
@@ -280,6 +297,9 @@ export default function AdminDashboard() {
     (documentPage - 1) * DOCUMENTS_PER_PAGE,
     documentPage * DOCUMENTS_PER_PAGE,
   );
+  const getProfileSubscription = (profileId: string) => {
+    return subscriptions.find((subscription) => subscription.profile_id === profileId || subscription.user_id === profileId) || null;
+  };
 
   useEffect(() => {
     if (documentPage > documentPageCount) {
@@ -385,6 +405,9 @@ export default function AdminDashboard() {
   };
 
   const startProfileEdit = (profile: Profile) => {
+    const subscription = getProfileSubscription(profile.id);
+    const daysLeft = getSubscriptionDaysLeft(subscription);
+
     setEditingProfileId(profile.id);
     setProfileEditForm({
       name: profile.name || "",
@@ -392,6 +415,7 @@ export default function AdminDashboard() {
       whatsapp: profile.whatsapp || "",
       location: profile.location || "",
       active_plan: profile.active_plan || "Basico",
+      plan_days: daysLeft && daysLeft > 0 ? String(daysLeft) : "30",
       is_online: Boolean(profile.is_online),
       profile_approval_status: profile.profile_approval_status === "approved" ? "approved" : "pending",
     });
@@ -406,6 +430,11 @@ export default function AdminDashboard() {
     if (!editingProfileId) return;
 
     setAdminActionMessage("Salvando perfil...");
+    const selectedPlan = getPlanConfig(profileEditForm.active_plan);
+    const planDays = Math.max(1, Math.floor(Number(profileEditForm.plan_days) || 0));
+    const periodStart = new Date();
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodEnd.getDate() + planDays);
 
     const { error } = await supabase
       .from("profiles")
@@ -427,9 +456,36 @@ export default function AdminDashboard() {
       return;
     }
 
+    const subscriptionPayload = {
+      user_id: editingProfileId,
+      profile_id: editingProfileId,
+      plan: selectedPlan.key,
+      plan_key: selectedPlan.key,
+      amount: getPlanAmount(selectedPlan.price),
+      payment_method: "manual_admin",
+      status: "active",
+      current_period_start: periodStart.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+    };
+    const existingSubscription = getProfileSubscription(editingProfileId);
+    const subscriptionResult = existingSubscription?.id
+      ? await supabase.from("subscriptions").update(subscriptionPayload).eq("id", existingSubscription.id)
+      : existingSubscription
+        ? await supabase
+            .from("subscriptions")
+            .update(subscriptionPayload)
+            .or(`user_id.eq.${editingProfileId},profile_id.eq.${editingProfileId}`)
+        : await supabase.from("subscriptions").insert(subscriptionPayload);
+
+    if (subscriptionResult.error) {
+      setAdminActionMessage(`Perfil salvo, mas houve erro ao atualizar o plano: ${subscriptionResult.error.message}`);
+      await loadProfiles();
+      return;
+    }
+
     setAdminActionMessage("Perfil atualizado.");
     cancelProfileEdit();
-    await loadProfiles();
+    await Promise.all([loadProfiles(), loadSubscriptions()]);
   };
 
   const deleteProfile = async (profile: Profile) => {
@@ -535,13 +591,15 @@ export default function AdminDashboard() {
                     <div style={{ display: "grid", gap: "0.85rem" }}>
                       {mediaItems.filter((item) => item.approval_status === "pending").map((item) => (
                         <article key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
-                          {item.media_type === "video" && item.public_url ? (
-                            <video src={item.public_url} style={{ width: "4.5rem", height: "4.5rem", objectFit: "cover", borderRadius: "0.45rem" }} muted />
-                          ) : item.public_url ? (
-                            <img src={item.public_url} alt={item.file_name || "Foto enviada"} style={{ width: "4.5rem", height: "4.5rem", objectFit: "cover", borderRadius: "0.45rem" }} />
-                          ) : (
-                            <div style={{ width: "4.5rem", height: "4.5rem", borderRadius: "0.45rem", background: "rgba(245,230,200,0.08)" }} />
-                          )}
+                          <div className="watermarked-media watermarked-media--admin-thumb">
+                            {item.media_type === "video" && item.public_url ? (
+                              <video src={item.public_url} muted />
+                            ) : item.public_url ? (
+                              <img src={item.public_url} alt={item.file_name || "Foto enviada"} />
+                            ) : (
+                              <div />
+                            )}
+                          </div>
                           <div>
                             <strong style={{ color: "white" }}>{item.profiles?.name || "Perfil sem nome"}</strong>
                             <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
@@ -752,13 +810,24 @@ export default function AdminDashboard() {
                 <div style={{ display: "grid", gap: "0.85rem" }}>
                   {visibleManageableProfiles.map((profile) => (
                     <article key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                      {(() => {
+                        const subscription = getProfileSubscription(profile.id);
+                        const daysLeft = getSubscriptionDaysLeft(subscription);
+                        const endDate = getSubscriptionEndDate(subscription);
+
+                        return (
                       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(8rem, 0.7fr) minmax(8rem, 0.7fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
                         <div style={{ minWidth: 0 }}>
                           <strong style={{ color: "white" }}>{profile.name}</strong>
                           <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>{profile.location || "Localização não informada"}</p>
                         </div>
                         <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>{profile.type || "Não informado"}</span>
-                        <span style={{ color: "white" }}>{getPlanConfig(profile.active_plan || "Basico").displayName}</span>
+                        <span style={{ color: "white" }}>
+                          {getPlanConfig(profile.active_plan || "Basico").displayName}
+                          <small style={{ display: "block", marginTop: "0.2rem", color: "var(--text-secondary)", fontSize: "0.76rem" }}>
+                            {endDate ? `${daysLeft} dia(s) restantes` : "Sem vencimento definido"}
+                          </small>
+                        </span>
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <span style={{ width: "100%", color: profile.profile_approval_status === "approved" ? "#4ade80" : "#eab308", fontWeight: "bold", textAlign: "right" }}>
                             {profile.profile_approval_status === "approved" ? "Aprovado" : "Aguardando aprovação"}
@@ -767,6 +836,8 @@ export default function AdminDashboard() {
                           <button className="button button--ghost" type="button" onClick={() => deleteProfile(profile)}>Excluir</button>
                         </div>
                       </div>
+                        );
+                      })()}
 
                       {editingProfileId === profile.id && (
                         <div style={{ display: "grid", gap: "1rem", padding: "1rem", borderRadius: "0.65rem", background: "rgba(0,0,0,0.28)", border: "1px solid rgba(245,230,200,0.08)" }}>
@@ -775,7 +846,8 @@ export default function AdminDashboard() {
                             <label className="input-group"><span>Categoria</span><select value={profileEditForm.type} onChange={(event) => setProfileEditForm({ ...profileEditForm, type: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="mulher">Mulher</option><option value="homem">Homem</option><option value="trans">Trans</option></select></label>
                             <label className="input-group"><span>WhatsApp</span><input value={profileEditForm.whatsapp} onChange={(event) => setProfileEditForm({ ...profileEditForm, whatsapp: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
                             <label className="input-group"><span>Localização</span><input value={profileEditForm.location} onChange={(event) => setProfileEditForm({ ...profileEditForm, location: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
-                            <label className="input-group"><span>Plano</span><select value={profileEditForm.active_plan} onChange={(event) => setProfileEditForm({ ...profileEditForm, active_plan: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="Basico">Básico</option><option value="Premium">Premium</option><option value="Top Prive">Top Privê</option></select></label>
+                            <label className="input-group"><span>Plano</span><select value={profileEditForm.active_plan} onChange={(event) => setProfileEditForm({ ...profileEditForm, active_plan: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}>{PLAN_LIST.map((plan) => <option key={plan.key} value={plan.key}>{plan.displayName}</option>)}</select></label>
+                            <label className="input-group"><span>Dias do plano</span><input type="number" min="1" max="365" value={profileEditForm.plan_days} onChange={(event) => setProfileEditForm({ ...profileEditForm, plan_days: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
                             <label className="input-group"><span>Status</span><select value={profileEditForm.profile_approval_status} onChange={(event) => setProfileEditForm({ ...profileEditForm, profile_approval_status: event.target.value as "pending" | "approved" })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="pending">Aguardando aprovação</option><option value="approved">Aprovado</option></select></label>
                             <label style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", color: "var(--text-secondary)" }}><input type="checkbox" checked={profileEditForm.is_online} onChange={(event) => setProfileEditForm({ ...profileEditForm, is_online: event.target.checked })} />Online</label>
                           </div>
@@ -829,17 +901,26 @@ export default function AdminDashboard() {
                     <tr style={{ borderBottom: "1px solid rgba(212,175,55,0.3)", color: "var(--gold-primary)" }}>
                       <th style={{ padding: "1rem" }}>Plano</th>
                       <th style={{ padding: "1rem" }}>Status</th>
+                      <th style={{ padding: "1rem" }}>Vence em</th>
                       <th style={{ padding: "1rem" }}>Atualizado</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {subscriptions.map((subscription, index) => (
-                      <tr key={subscription.id || `${subscription.user_id}-${index}`} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
-                        <td style={{ padding: "1rem" }}>{getPlanConfig(subscription.plan || subscription.plan_key || "Basico").displayName}</td>
-                        <td style={{ padding: "1rem" }}>{subscription.status || "Sem status"}</td>
-                        <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{formatDateTimeSP(subscription.updated_at || subscription.created_at)}</td>
-                      </tr>
-                    ))}
+                    {subscriptions.map((subscription, index) => {
+                      const daysLeft = getSubscriptionDaysLeft(subscription);
+                      const endDate = getSubscriptionEndDate(subscription);
+
+                      return (
+                        <tr key={subscription.id || `${subscription.user_id}-${index}`} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
+                          <td style={{ padding: "1rem" }}>{getPlanConfig(subscription.plan || subscription.plan_key || "Basico").displayName}</td>
+                          <td style={{ padding: "1rem" }}>{subscription.status || "Sem status"}</td>
+                          <td style={{ padding: "1rem", color: daysLeft === 0 ? "#f87171" : "var(--text-secondary)" }}>
+                            {endDate ? `${daysLeft} dia(s) - ${formatDateTimeSP(endDate.toISOString())}` : "Sem vencimento"}
+                          </td>
+                          <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{formatDateTimeSP(subscription.updated_at || subscription.created_at)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

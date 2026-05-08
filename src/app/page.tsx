@@ -114,7 +114,6 @@ export default function Home() {
         </a>
         <nav className="app-nav" aria-label="Navegação">
           <a href="/">Início</a>
-          <a href="/favoritos">Favoritos</a>
           <a href="/planos">Planos</a>
           <a href="/parcerias-promocoes">Parcerias</a>
           <AuthNavLink />

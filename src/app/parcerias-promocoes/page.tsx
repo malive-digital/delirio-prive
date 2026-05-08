@@ -43,7 +43,6 @@ export default function ParceriasPromocoes() {
         </Link>
         <nav className="app-nav" aria-label="Navegação">
           <Link href="/">Início</Link>
-          <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link className="is-active" href="/parcerias-promocoes">Parcerias</Link>
           <AuthNavLink />

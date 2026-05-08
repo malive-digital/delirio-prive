@@ -217,7 +217,9 @@ export default function PerfilPage() {
                 {videos.length > 0 && (
                   <div className="profile-video-list" aria-label="Vídeos aprovados">
                     {videos.map((videoUrl, index) => (
-                      <video key={videoUrl} src={videoUrl} controls preload="metadata" aria-label={`Vídeo ${index + 1}`} />
+                      <div className="watermarked-media" key={videoUrl}>
+                        <video src={videoUrl} controls preload="metadata" aria-label={`Vídeo ${index + 1}`} />
+                      </div>
                     ))}
                   </div>
                 )}

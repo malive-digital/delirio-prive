@@ -14,6 +14,9 @@ type CatalogProfile = {
   state_uf: string | null;
   description: string | null;
   active_plan: string | null;
+  serves: string | null;
+  has_place: string | null;
+  payment_methods: string | null;
   is_online: boolean | null;
   profile_verified: boolean | null;
   media_url?: string;
@@ -53,6 +56,26 @@ const UF_BOXES = [
   { uf: "GO", minLat: -19.5, maxLat: -12.4, minLng: -53.3, maxLng: -45.9 },
 ];
 
+const PLAN_FILTERS = ["Basico", "Premium", "Top Prive"];
+const SERVES_FILTERS = ["Homens", "Mulheres", "Casais", "Trans"];
+const PLACE_FILTERS = [
+  { value: "com_local", label: "Com local" },
+  { value: "sem_local", label: "Sem local" },
+  { value: "hotel_motel", label: "Hotel ou motel" },
+  { value: "a_combinar", label: "A combinar" },
+];
+const PAYMENT_FILTERS = ["Pix", "Dinheiro", "Cartão de crédito", "Cartão de débito"];
+const PLAN_ORDER = {
+  "Top Prive": 0,
+  Premium: 1,
+  Basico: 2,
+};
+const CATALOG_PLAN_SECTIONS = [
+  { key: "Top Prive", title: "Top Privê", gridClass: "profile-grid--catalog-top" },
+  { key: "Premium", title: "Premium", gridClass: "profile-grid--catalog-premium" },
+  { key: "Basico", title: "Básico", gridClass: "profile-grid--catalog-basic" },
+] as const;
+
 const detectUfFromCoords = (latitude: number, longitude: number) => {
   return UF_BOXES.find((box) => latitude >= box.minLat && latitude <= box.maxLat && longitude >= box.minLng && longitude <= box.maxLng)?.uf || "";
 };
@@ -61,14 +84,20 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
   const [profiles, setProfiles] = useState<CatalogProfile[]>([]);
   const [search, setSearch] = useState("");
   const [selectedUf, setSelectedUf] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedServes, setSelectedServes] = useState("");
+  const [selectedPlace, setSelectedPlace] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState("");
   const [regionMessage, setRegionMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const loadProfiles = async () => {
       let { data, error } = await supabase
         .from("profiles")
-        .select("id,type,name,location,state_uf,description,active_plan,is_online,profile_verified")
+        .select("id,type,name,location,state_uf,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified")
         .eq("type", type)
         .eq("profile_approval_status", "approved")
         .order("updated_at", { ascending: false });
@@ -76,7 +105,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
       if (error) {
         const fallback = await supabase
           .from("profiles")
-          .select("id,type,name,location,description,active_plan,is_online,profile_verified")
+          .select("id,type,name,location,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified")
           .eq("type", type)
           .eq("profile_approval_status", "approved")
           .order("updated_at", { ascending: false });
@@ -133,20 +162,43 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
     }
   }, []);
 
+  const availableUfs = useMemo(() => {
+    const ufs = new Set(profiles.map((profile) => profile.state_uf).filter((uf): uf is string => BRAZIL_UFS.includes(uf || "")));
+    return BRAZIL_UFS.filter((uf) => ufs.has(uf));
+  }, [profiles]);
+
+  useEffect(() => {
+    if (selectedUf && !availableUfs.includes(selectedUf)) {
+      handleUfChange("");
+    }
+  }, [availableUfs, selectedUf]);
+
   const visibleProfiles = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return profiles.filter((profile) => {
-      const matchesUf = !selectedUf || profile.state_uf === selectedUf;
-      const matchesSearch = !normalizedSearch || [profile.name, profile.location, profile.state_uf, profile.description, profile.active_plan]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch);
+    return profiles
+      .filter((profile) => {
+        const matchesUf = !selectedUf || profile.state_uf === selectedUf;
+        const plan = getPlanConfig(profile.active_plan || "Basico");
+        const matchesPlan = !selectedPlan || plan.key === selectedPlan;
+        const matchesStatus = !selectedStatus || (selectedStatus === "online" ? profile.is_online : profile.profile_verified);
+        const matchesServes = !selectedServes || (profile.serves || "").toLowerCase().includes(selectedServes.toLowerCase());
+        const matchesPlace = !selectedPlace || profile.has_place === selectedPlace;
+        const matchesPayment = !selectedPayment || (profile.payment_methods || "").toLowerCase().includes(selectedPayment.toLowerCase());
+        const matchesSearch = !normalizedSearch || [profile.name, profile.location, profile.state_uf, profile.description, profile.active_plan]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
 
-      return matchesUf && matchesSearch;
-    });
-  }, [profiles, search, selectedUf]);
+        return matchesUf && matchesPlan && matchesStatus && matchesServes && matchesPlace && matchesPayment && matchesSearch;
+      })
+      .sort((a, b) => {
+        const planA = getPlanConfig(a.active_plan || "Basico").key;
+        const planB = getPlanConfig(b.active_plan || "Basico").key;
+        return PLAN_ORDER[planA] - PLAN_ORDER[planB];
+      });
+  }, [profiles, search, selectedUf, selectedPlan, selectedStatus, selectedServes, selectedPlace, selectedPayment]);
 
   const handleUfChange = (uf: string) => {
     setSelectedUf(uf);
@@ -156,6 +208,18 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
     }
 
     localStorage.removeItem("delirioPreferredUf");
+  };
+
+  const activeFilterCount = [selectedUf, selectedPlan, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setSelectedPlan("");
+    setSelectedStatus("");
+    setSelectedServes("");
+    setSelectedPlace("");
+    setSelectedPayment("");
+    handleUfChange("");
+    setRegionMessage("");
   };
 
   const detectRegion = () => {
@@ -181,6 +245,35 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
     );
   };
 
+  const renderProfileCard = (profile: CatalogProfile) => {
+    const plan = getPlanConfig(profile.active_plan || "Basico");
+    const planSizeClass =
+      plan.key === "Top Prive"
+        ? "profile-card--catalog-top"
+        : plan.key === "Premium"
+          ? "profile-card--catalog-premium"
+          : "profile-card--catalog-basic";
+
+    return (
+      <Link className={`profile-card profile-card--link ${planSizeClass}`} href={`/perfil?id=${profile.id}`} key={profile.id}>
+        <div
+          className="profile-card__media profile-card__media--one"
+          style={profile.media_url ? { backgroundImage: `linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)), url("${profile.media_url}")` } : undefined}
+        />
+        <div className="profile-card__body">
+          <span className="tag tag--premium">{plan.displayName}</span>
+          <h2>{profile.name || "Perfil sem nome"}</h2>
+          <p className="profile-card__location">{[profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Localizacao nao informada"}</p>
+          {profile.description && <p className="profile-card__description">{profile.description}</p>}
+          <div className="trust-row">
+            {profile.is_online && <span>Online</span>}
+            {profile.profile_verified && <span>Verificado</span>}
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <>
       <header className="app-header">
@@ -190,7 +283,6 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
         </Link>
         <nav className="app-nav" aria-label="Navegacao">
           <Link href="/">Inicio</Link>
-          <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
           <AuthNavLink />
@@ -213,7 +305,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
 
         <section className="catalog-shell catalog-shell--single">
           <div className="catalog-main">
-            <section className="catalog-controls" aria-label="Controles do catalogo">
+            <section className={`catalog-controls ${filtersOpen ? "" : "is-collapsed"}`} aria-label="Controles do catalogo">
               <div className="catalog-controls__bar">
                 <label className="search-pill">
                   <span>Buscar perfil</span>
@@ -225,24 +317,79 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                   />
                 </label>
                 <div className="filter-summary" aria-live="polite">
-                  <span>{visibleProfiles.length} perfil(is)</span>
+                  <span>{visibleProfiles.length} perfil(is){activeFilterCount ? ` | ${activeFilterCount} filtro(s)` : ""}</span>
                 </div>
+                <button className="filter-toggle" type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((current) => !current)}>
+                  Filtros
+                  <span className="filter-toggle__icon" aria-hidden="true" />
+                </button>
+                {activeFilterCount > 0 && (
+                  <button className="button button--ghost clear-filter-button" type="button" onClick={clearFilters}>
+                    Limpar filtros
+                  </button>
+                )}
               </div>
 
-              <div className="catalog-region-bar">
-                <label>
-                  <span>Estado</span>
-                  <select value={selectedUf} onChange={(event) => handleUfChange(event.target.value)}>
-                    <option value="">Todos</option>
-                    {BRAZIL_UFS.map((uf) => (
-                      <option key={uf} value={uf}>{uf}</option>
-                    ))}
-                  </select>
-                </label>
-                <button className="button button--ghost" type="button" onClick={detectRegion}>
-                  Detectar minha regiao
-                </button>
-                {regionMessage && <p aria-live="polite">{regionMessage}</p>}
+              <div className="filter-panel">
+                <div className="catalog-region-bar">
+                  <label>
+                    <span>Estado</span>
+                    <select value={selectedUf} onChange={(event) => handleUfChange(event.target.value)}>
+                      <option value="">Todos</option>
+                      {availableUfs.map((uf) => (
+                        <option key={uf} value={uf}>{uf}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Plano</span>
+                    <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)}>
+                      <option value="">Todos</option>
+                      {PLAN_FILTERS.map((plan) => (
+                        <option key={plan} value={plan}>{getPlanConfig(plan).displayName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Status</span>
+                    <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
+                      <option value="">Todos</option>
+                      <option value="online">Online</option>
+                      <option value="verified">Verificado</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Atende</span>
+                    <select value={selectedServes} onChange={(event) => setSelectedServes(event.target.value)}>
+                      <option value="">Todos</option>
+                      {SERVES_FILTERS.map((serves) => (
+                        <option key={serves} value={serves}>{serves}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Local</span>
+                    <select value={selectedPlace} onChange={(event) => setSelectedPlace(event.target.value)}>
+                      <option value="">Todos</option>
+                      {PLACE_FILTERS.map((place) => (
+                        <option key={place.value} value={place.value}>{place.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Pagamento</span>
+                    <select value={selectedPayment} onChange={(event) => setSelectedPayment(event.target.value)}>
+                      <option value="">Todos</option>
+                      {PAYMENT_FILTERS.map((payment) => (
+                        <option key={payment} value={payment}>{payment}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button className="button button--ghost" type="button" onClick={detectRegion}>
+                    Detectar minha regiao
+                  </button>
+                  {regionMessage && <p aria-live="polite">{regionMessage}</p>}
+                </div>
               </div>
             </section>
 
@@ -256,36 +403,26 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                 <p>Os perfis aparecerao aqui quando forem cadastrados e publicados pela administracao.</p>
               </section>
             ) : (
-              <section className="profile-grid" aria-label={`Perfis de ${title}`}>
-                {visibleProfiles.map((profile) => {
-                  const plan = getPlanConfig(profile.active_plan || "Basico");
-                  const planSizeClass =
-                    plan.key === "Top Prive"
-                      ? "profile-card--catalog-top"
-                      : plan.key === "Premium"
-                        ? "profile-card--catalog-premium"
-                        : "profile-card--catalog-basic";
+              <div className="catalog-plan-stack" aria-label={`Perfis de ${title}`}>
+                {CATALOG_PLAN_SECTIONS.map((section) => {
+                  const sectionProfiles = visibleProfiles.filter((profile) => getPlanConfig(profile.active_plan || "Basico").key === section.key);
+                  if (!sectionProfiles.length) return null;
 
                   return (
-                    <Link className={`profile-card profile-card--link ${planSizeClass}`} href={`/perfil?id=${profile.id}`} key={profile.id}>
-                      <div
-                        className="profile-card__media profile-card__media--one"
-                        style={profile.media_url ? { backgroundImage: `linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)), url("${profile.media_url}")` } : undefined}
-                      />
-                      <div className="profile-card__body">
-                        <span className="tag tag--premium">{plan.displayName}</span>
-                        <h2>{profile.name || "Perfil sem nome"}</h2>
-                        <p className="profile-card__location">{[profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Localizacao nao informada"}</p>
-                        {profile.description && <p className="profile-card__description">{profile.description}</p>}
-                        <div className="trust-row">
-                          {profile.is_online && <span>Online</span>}
-                          {profile.profile_verified && <span>Verificado</span>}
+                    <section className="catalog-plan-section" key={section.key} aria-labelledby={`catalog-plan-${section.key}`}>
+                      <div className="catalog-plan-section__header">
+                        <div>
+                          <h2 id={`catalog-plan-${section.key}`}>{section.title}</h2>
                         </div>
+                        <span>{sectionProfiles.length} perfil(is)</span>
                       </div>
-                    </Link>
+                      <div className={`profile-grid ${section.gridClass}`}>
+                        {sectionProfiles.map(renderProfileCard)}
+                      </div>
+                    </section>
                   );
                 })}
-              </section>
+              </div>
             )}
           </div>
         </section>

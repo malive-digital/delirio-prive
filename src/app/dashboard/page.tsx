@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
+import { getSubscriptionDaysLeft, isSubscriptionActive } from "@/lib/subscriptions";
 
 const TRIAL_DAYS = 7;
 const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -232,8 +233,10 @@ export default function Dashboard() {
   const [deletingMediaId, setDeletingMediaId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
+  const [confirmAction, setConfirmAction] = useState<null | { title: string; description: string; confirmLabel: string; onConfirm: () => void }>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [subscriptionDaysLeft, setSubscriptionDaysLeft] = useState<number | null>(null);
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
 
@@ -330,16 +333,15 @@ export default function Dashboard() {
 
       const { data: subscriptionData } = await supabase
         .from("subscriptions")
-        .select("status,plan,plan_key")
+        .select("status,plan,plan_key,current_period_end")
         .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const storedPlan = localStorage.getItem("hasActivePlan") || sessionStorage.getItem("hasActivePlan");
       const planStorage = localStorage.getItem("delirioSessionPersistence") === "session" ? sessionStorage : localStorage;
-      const subscriptionStatus = typeof subscriptionData?.status === "string" ? subscriptionData.status.toLowerCase() : "";
-      const hasPaidPlan = ["active", "paid", "approved", "current"].includes(subscriptionStatus);
+      const hasPaidPlan = isSubscriptionActive(subscriptionData);
       const subscriptionPlan =
         typeof subscriptionData?.plan === "string"
           ? subscriptionData.plan.trim()
@@ -348,6 +350,7 @@ export default function Dashboard() {
             : "";
       const profilePlan = typeof profileData?.active_plan === "string" ? profileData.active_plan.trim() : "";
       const savedPlan = hasPaidPlan ? subscriptionPlan || profilePlan : "";
+      const paidDaysLeft = hasPaidPlan ? getSubscriptionDaysLeft(subscriptionData) : null;
       const daysLeft = getTrialDaysLeft(user.created_at);
       const hasActiveTrial = daysLeft > 0;
       let hasDashboardAccess = Boolean(savedPlan || hasActiveTrial);
@@ -355,6 +358,7 @@ export default function Dashboard() {
       if (hasActiveTrial && !savedPlan) {
         setIsTrial(true);
         setTrialDaysLeft(daysLeft);
+        setSubscriptionDaysLeft(null);
         localStorage.removeItem("hasActivePlan");
         sessionStorage.removeItem("hasActivePlan");
         planStorage.setItem("hasActivePlan", "trial");
@@ -362,6 +366,12 @@ export default function Dashboard() {
         localStorage.removeItem("hasActivePlan");
         sessionStorage.removeItem("hasActivePlan");
         hasDashboardAccess = Boolean(savedPlan);
+      }
+
+      if (savedPlan) {
+        setIsTrial(false);
+        setTrialDaysLeft(null);
+        setSubscriptionDaysLeft(paidDaysLeft);
       }
 
       if (!hasDashboardAccess) {
@@ -392,7 +402,7 @@ export default function Dashboard() {
     return {
       id: userId,
       type: nextProfile.type,
-      name: nextProfile.name.trim() || null,
+      name: nextProfile.name.trim() || "Perfil sem nome",
       whatsapp: nextProfile.whatsapp.trim() || null,
       location: nextProfile.location.trim() || null,
       state_uf: nextProfile.state_uf || null,
@@ -659,14 +669,11 @@ export default function Dashboard() {
     await loadProfileMedia(userId);
   };
 
-  const handleMediaDelete = async (item: ProfileMedia) => {
+  const deleteMediaItem = async (item: ProfileMedia) => {
     if (!userId || deletingMediaId) return;
 
-    const shouldDelete = window.confirm("Excluir esta foto do perfil?");
-    if (!shouldDelete) return;
-
     setDeletingMediaId(item.id);
-    setStatusMessage("Excluindo foto...");
+    setStatusMessage(`Excluindo ${item.media_type === "video" ? "vídeo" : "foto"}...`);
 
     const { error: storageError } = await supabase.storage.from("profile-media").remove([item.storage_path]);
 
@@ -691,7 +698,68 @@ export default function Dashboard() {
     }
 
     setMediaItems((current) => current.filter((mediaItem) => mediaItem.id !== item.id));
-    setStatusMessage("Foto excluida do perfil.");
+    setStatusMessage(`${item.media_type === "video" ? "Vídeo" : "Foto"} excluído do perfil.`);
+  };
+
+  const handleMediaDelete = (item: ProfileMedia) => {
+    setConfirmAction({
+      title: `Excluir ${item.media_type === "video" ? "vídeo" : "foto"}`,
+      description: `Tem certeza que deseja excluir ${item.file_name || "esta mídia"}? Essa ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      onConfirm: () => deleteMediaItem(item),
+    });
+  };
+
+  const deleteDocument = async () => {
+    if (!userId || !profile.user_document_path) return;
+
+    setUploadingDocument(true);
+    setStatusMessage("Excluindo documento...");
+
+    const { error: storageError } = await supabase.storage.from("user-documents").remove([profile.user_document_path]);
+    if (storageError) {
+      setUploadingDocument(false);
+      setStatusMessage(`Erro ao excluir documento: ${storageError.message}`);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        user_document_path: null,
+        user_document_name: null,
+        user_document_mime: null,
+        document_uploaded_at: null,
+        profile_verified: false,
+        profile_approval_status: "pending",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    setUploadingDocument(false);
+
+    if (updateError) {
+      setStatusMessage(`Documento removido, mas continuou vinculado ao perfil: ${updateError.message}`);
+      return;
+    }
+
+    setProfile((current) => ({
+      ...current,
+      user_document_path: null,
+      user_document_name: null,
+      profile_approval_status: "pending",
+    }));
+    setDocumentUrl("");
+    setStatusMessage("Documento excluído do perfil.");
+  };
+
+  const handleDocumentDelete = () => {
+    setConfirmAction({
+      title: "Excluir documento",
+      description: `Tem certeza que deseja excluir ${profile.user_document_name || "o documento anexado"}? O perfil voltará para análise.`,
+      confirmLabel: "Excluir documento",
+      onConfirm: deleteDocument,
+    });
   };
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -815,6 +883,17 @@ export default function Dashboard() {
                     </div>
                     <div className="trial-progress__track">
                       <span style={{ width: `${trialPercent}%` }} />
+                    </div>
+                  </div>
+                )}
+                {!isTrial && subscriptionDaysLeft !== null && (
+                  <div className="trial-progress" aria-label={`${subscriptionDaysLeft} dias de assinatura restantes`}>
+                    <div className="trial-progress__top">
+                      <span>Assinatura ativa</span>
+                      <strong>{subscriptionDaysLeft} dia(s)</strong>
+                    </div>
+                    <div className="trial-progress__track">
+                      <span style={{ width: `${Math.max(0, Math.min(100, (subscriptionDaysLeft / 30) * 100))}%` }} />
                     </div>
                   </div>
                 )}
@@ -1246,13 +1325,15 @@ export default function Dashboard() {
                     ) : (
                       mediaItems.map((item) => (
                         <article className="media-approval-card" key={item.id}>
-                          {item.media_type === "video" && item.public_url ? (
-                            <video src={item.public_url} controls muted />
-                          ) : item.public_url ? (
-                            <img src={item.public_url} alt={item.file_name || "Foto enviada"} />
-                          ) : (
-                            <div />
-                          )}
+                          <div className="watermarked-media watermarked-media--approval">
+                            {item.media_type === "video" && item.public_url ? (
+                              <video src={item.public_url} controls muted />
+                            ) : item.public_url ? (
+                              <img src={item.public_url} alt={item.file_name || "Foto enviada"} />
+                            ) : (
+                              <div />
+                            )}
+                          </div>
                           <div>
                             <strong>{item.file_name || (item.media_type === "video" ? "Vídeo enviado" : "Foto enviada")}</strong>
                             {item.is_cover && <span data-status="cover">Capa</span>}
@@ -1301,6 +1382,11 @@ export default function Dashboard() {
                         Visualizar PDF
                       </a>
                     )}
+                    {profile.user_document_path && (
+                      <button className="button button--ghost" type="button" onClick={handleDocumentDelete} disabled={uploadingDocument}>
+                        Excluir PDF
+                      </button>
+                    )}
                   </div>
 
                   {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}
@@ -1310,6 +1396,35 @@ export default function Dashboard() {
           </>
         )}
       </main>
+      {confirmAction && (
+        <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+          <div className="confirm-modal__panel">
+            <span className="section-kicker">Confirmar exclusão</span>
+            <h2 id="confirm-modal-title">{confirmAction.title}</h2>
+            <p>{confirmAction.description}</p>
+            <div className="confirm-modal__actions">
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() => {
+                  const action = confirmAction.onConfirm;
+                  setConfirmAction(null);
+                  action();
+                }}
+              >
+                {confirmAction.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

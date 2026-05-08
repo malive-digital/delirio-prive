@@ -11,7 +11,6 @@ export default function PerfilTransPage() {
         </Link>
         <nav className="app-nav" aria-label="Navegação">
           <Link href="/">Início</Link>
-          <Link href="/favoritos">Favoritos</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
           <AuthNavLink />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { isSubscriptionActive } from "@/lib/subscriptions";
 
 const TRIAL_DAYS = 7;
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
@@ -76,14 +77,13 @@ export default function Login() {
 
     const { data: subscriptionData } = await supabase
       .from("subscriptions")
-      .select("status,plan,plan_key")
+      .select("status,plan,plan_key,current_period_end")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const subscriptionStatus = typeof subscriptionData?.status === "string" ? subscriptionData.status.toLowerCase() : "";
-    const hasPaidPlan = ["active", "paid", "approved", "current"].includes(subscriptionStatus);
+    const hasPaidPlan = isSubscriptionActive(subscriptionData);
 
     if (hasPaidPlan) {
       const planStorage = rememberMe ? localStorage : sessionStorage;
