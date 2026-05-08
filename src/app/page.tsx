@@ -7,60 +7,52 @@ import { AuthNavLink } from "@/components/AuthNavLink";
 
 export default function Home() {
   const router = useRouter();
-  const [showAgeGate, setShowAgeGate] = useState(false);
   const [showInterestModal, setShowInterestModal] = useState(false);
-  const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
   const [showIntroVideo, setShowIntroVideo] = useState(false);
 
   useEffect(() => {
-    const introPlayed = sessionStorage.getItem("introPlayed");
-    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
-    const userPreference = localStorage.getItem("userPreference");
-
-    if (!introPlayed) {
-      setShowIntroVideo(true);
-      return;
-    }
-
-    if (!ageConfirmed) {
-      setShowAgeGate(true);
-    } else if (userPreference) {
-      // Se já tem preferência salva, redireciona direto
-      router.push(userPreference);
-    } else {
-      setShowInterestModal(true);
-    }
-  }, [router]);
-
-  const finishIntroVideo = () => {
-    sessionStorage.setItem("introPlayed", "true");
-    setShowIntroVideo(false);
-
-    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
-    const userPreference = localStorage.getItem("userPreference");
-
-    if (!ageConfirmed) {
-      setShowAgeGate(true);
-    } else if (userPreference) {
-      router.push(userPreference);
-    } else {
-      setShowInterestModal(true);
-    }
-  };
-
-  const handleAgeConfirm = () => {
-    sessionStorage.setItem("ageConfirmed", "true");
-    setIsHidingAgeGate(true);
-    setTimeout(() => {
-      setShowAgeGate(false);
-      
+    const continueHomeFlow = () => {
       const userPreference = localStorage.getItem("userPreference");
+
       if (userPreference) {
+        // Se já tem preferência salva, redireciona direto
         router.push(userPreference);
       } else {
         setShowInterestModal(true);
       }
-    }, 400); 
+    };
+
+    if (!sessionStorage.getItem("introPlayed")) {
+      setShowIntroVideo(true);
+      return;
+    }
+
+    if (sessionStorage.getItem("ageConfirmed")) {
+      continueHomeFlow();
+    }
+
+    window.addEventListener("delirio:age-confirmed", continueHomeFlow);
+
+    return () => {
+      window.removeEventListener("delirio:age-confirmed", continueHomeFlow);
+    };
+  }, [router, showIntroVideo]);
+
+  const finishIntroVideo = () => {
+    sessionStorage.setItem("introPlayed", "true");
+    setShowIntroVideo(false);
+    window.dispatchEvent(new Event("delirio:intro-finished"));
+
+    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
+    const userPreference = localStorage.getItem("userPreference");
+
+    if (!ageConfirmed) {
+      return;
+    } else if (userPreference) {
+      router.push(userPreference);
+    } else {
+      setShowInterestModal(true);
+    }
   };
 
   const handleInterestSelect = (target: string) => {
@@ -84,45 +76,6 @@ export default function Home() {
           <button className="intro-video__skip" type="button" onClick={finishIntroVideo}>
             Pular
           </button>
-        </div>
-      )}
-
-      {showAgeGate && (
-        <div className={`age-gate ${isHidingAgeGate ? "is-hiding" : ""}`} role="dialog" aria-modal="true" aria-labelledby="age-title">
-          <div className="age-gate__panel">
-            <p className="eyebrow">Conteúdo adulto</p>
-            <h2 id="age-title">Acesso restrito a maiores de 18 anos</h2>
-            <p>Ao continuar, você confirma ser maior de idade e concorda com os termos de uso e política de privacidade.</p>
-            <div className="age-gate__notice-list">
-              <div className="age-gate__notice age-gate__notice--institutional">
-                <strong>Aviso institucional</strong>
-                <p>
-                  O Delírio Privê atua exclusivamente como plataforma de divulgação de perfis independentes. Não somos agência,
-                  boate, casa de atendimento, intermediadores ou representantes das anunciantes. Toda negociação acontece
-                  diretamente entre visitante e anunciante.
-                </p>
-              </div>
-
-              <div className="age-gate__notice age-gate__notice--warning">
-                <strong>Alerta contra golpes</strong>
-                <p>
-                  O Delírio Privê não solicita prints de conversas, vídeos de clientes, códigos, senhas ou pagamentos para
-                  terceiros. Desconfie de perfis, agenciadores ou supostos representantes usando o nome do site. Antes de
-                  qualquer pagamento, confirme diretamente com a administração oficial. Não respondemos intermediários,
-                  agenciadores ou terceiros.
-                </p>
-                <Link href="/cadastro-whatsapp" className="age-gate__policy-link">
-                  Ver alertas e política de anúncios
-                </Link>
-              </div>
-            </div>
-            <div className="age-gate__actions">
-              <button className="button button--primary" type="button" onClick={handleAgeConfirm}>
-                Tenho 18 anos ou mais
-              </button>
-              <a className="button button--ghost" href="https://www.google.com.br">Sair</a>
-            </div>
-          </div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
+import { AgeGate } from "@/components/AgeGate";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://delirioprive.com.br"),
@@ -11,6 +12,28 @@ export const metadata: Metadata = {
   description: "Conheça o Delírio Privê, uma plataforma exclusiva para encontrar acompanhantes de luxo com perfis verificados, fotos, informações completas e atendimento discreto.",
   alternates: {
     canonical: "/",
+  },
+  openGraph: {
+    title: "Delírio Privê",
+    description: "Plataforma exclusiva de acompanhantes de luxo com perfis completos e atendimento discreto.",
+    url: "/",
+    siteName: "Delírio Privê",
+    images: [
+      {
+        url: "/capa.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Delírio Privê",
+      },
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Delírio Privê",
+    description: "Plataforma exclusiva de acompanhantes de luxo com perfis completos e atendimento discreto.",
+    images: ["/capa.jpg"],
   },
   robots: {
     index: true,
@@ -44,6 +67,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <AgeGate />
         {children}
         <footer className="site-footer">
           <span>© 2026 Delírio Privê. Todos os direitos reservados.</span>
