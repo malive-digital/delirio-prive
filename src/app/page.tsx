@@ -12,7 +12,7 @@ export default function Home() {
   const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
 
   useEffect(() => {
-    const ageConfirmed = localStorage.getItem("ageConfirmed");
+    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
     const userPreference = localStorage.getItem("userPreference");
 
     if (!ageConfirmed) {
@@ -26,7 +26,7 @@ export default function Home() {
   }, [router]);
 
   const handleAgeConfirm = () => {
-    localStorage.setItem("ageConfirmed", "true");
+    sessionStorage.setItem("ageConfirmed", "true");
     setIsHidingAgeGate(true);
     setTimeout(() => {
       setShowAgeGate(false);
