@@ -10,10 +10,17 @@ export default function Home() {
   const [showAgeGate, setShowAgeGate] = useState(false);
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
+  const [showIntroVideo, setShowIntroVideo] = useState(false);
 
   useEffect(() => {
+    const introPlayed = sessionStorage.getItem("introPlayed");
     const ageConfirmed = sessionStorage.getItem("ageConfirmed");
     const userPreference = localStorage.getItem("userPreference");
+
+    if (!introPlayed) {
+      setShowIntroVideo(true);
+      return;
+    }
 
     if (!ageConfirmed) {
       setShowAgeGate(true);
@@ -24,6 +31,22 @@ export default function Home() {
       setShowInterestModal(true);
     }
   }, [router]);
+
+  const finishIntroVideo = () => {
+    sessionStorage.setItem("introPlayed", "true");
+    setShowIntroVideo(false);
+
+    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
+    const userPreference = localStorage.getItem("userPreference");
+
+    if (!ageConfirmed) {
+      setShowAgeGate(true);
+    } else if (userPreference) {
+      router.push(userPreference);
+    } else {
+      setShowInterestModal(true);
+    }
+  };
 
   const handleAgeConfirm = () => {
     sessionStorage.setItem("ageConfirmed", "true");
@@ -47,6 +70,23 @@ export default function Home() {
 
   return (
     <div className="entry-page">
+      {showIntroVideo && (
+        <div className="intro-video" aria-label="Abertura Delírio Privê">
+          <video
+            className="intro-video__media"
+            src="/assets/intro.mp4"
+            autoPlay
+            muted
+            playsInline
+            onEnded={finishIntroVideo}
+            onError={finishIntroVideo}
+          />
+          <button className="intro-video__skip" type="button" onClick={finishIntroVideo}>
+            Pular
+          </button>
+        </div>
+      )}
+
       {showAgeGate && (
         <div className={`age-gate ${isHidingAgeGate ? "is-hiding" : ""}`} role="dialog" aria-modal="true" aria-labelledby="age-title">
           <div className="age-gate__panel">
