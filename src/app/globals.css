@@ -539,6 +539,9 @@ body.is-logged-in .auth-only {
   display: inline-flex;
   align-items: center;
   gap: 0.8rem;
+  width: clamp(10rem, 18vw, 14rem);
+  height: 3.2rem;
+  background: url("/assets/logo-horizontal.png") center / contain no-repeat;
   font-family: "Great Vibes", "Brush Script MT", cursive;
   font-size: clamp(1.75rem, 4vw, 2.15rem);
   font-weight: 400;
@@ -560,6 +563,16 @@ body.is-logged-in .auth-only {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.brand__mark,
+.brand > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
 
 .topbar__link {
@@ -1856,6 +1869,18 @@ body.is-switching-category .explore {
   width: 2.1rem;
   font-size: 1rem;
   border-width: 1px;
+}
+
+.profile-card__media::after,
+.gallery-stage::before,
+.gallery-thumb::after,
+.image-lightbox::before,
+.watermarked-media::after {
+  content: "";
+  border: 0;
+  background: url("/assets/watermark.png") center / contain no-repeat;
+  color: transparent;
+  text-shadow: none;
 }
 
 .profile-card__media--one {
