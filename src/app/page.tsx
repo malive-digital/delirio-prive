@@ -121,8 +121,19 @@ export default function Home() {
       </header>
 
       <main className="entry-shell" style={{ position: "relative", zIndex: 1, minHeight: "calc(100vh - 4.8rem)" }}>
-        {/* Modais estão como fixed, então podem cobrir a tela inteira, mas se quiser que fiquem abaixo do header, 
-            podemos ajustar o z-index ou deixá-los fluidos no meio do main */}
+        <section className="home-seo" aria-labelledby="home-title">
+          <p className="eyebrow">Plataforma exclusiva</p>
+          <h1 id="home-title">Delírio Privê | Acompanhantes de Luxo</h1>
+          <p>
+            Conheça o Delírio Privê, uma plataforma exclusiva para encontrar acompanhantes de luxo com perfis
+            verificados, fotos, informações completas e atendimento discreto.
+          </p>
+          <div className="home-seo__actions" aria-label="Categorias principais">
+            <Link className="button button--primary" href="/mulheres">Mulheres</Link>
+            <Link className="button button--ghost" href="/homens">Homens</Link>
+            <Link className="button button--ghost" href="/travestis">Trans</Link>
+          </div>
+        </section>
       </main>
     </div>
   );

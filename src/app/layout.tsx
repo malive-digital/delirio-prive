@@ -3,8 +3,23 @@ import "./globals.css";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Delírio Privê",
-  description: "Escolha seu interesse e acesse o catálogo premium do Delírio Privê.",
+  metadataBase: new URL("https://delirioprive.com.br"),
+  title: {
+    default: "Delírio Privê | Acompanhantes de Luxo",
+    template: "%s | Delírio Privê",
+  },
+  description: "Conheça o Delírio Privê, uma plataforma exclusiva para encontrar acompanhantes de luxo com perfis verificados, fotos, informações completas e atendimento discreto.",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export const viewport: Viewport = {

@@ -90,6 +90,34 @@ a {
   opacity: 0.72;
 }
 
+.home-seo {
+  width: min(100% - 2rem, 58rem);
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4rem) 0;
+  text-align: center;
+}
+
+.home-seo h1 {
+  margin: 0.4rem 0 1rem;
+  font-size: clamp(2.4rem, 6vw, 5.4rem);
+}
+
+.home-seo p:not(.eyebrow) {
+  max-width: 48rem;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.75;
+}
+
+.home-seo__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 1.6rem;
+}
+
 .app-header {
   position: sticky;
   top: 0;
