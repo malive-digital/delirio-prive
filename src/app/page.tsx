@@ -49,29 +49,29 @@ export default function Home() {
     <div className="entry-page">
       {showAgeGate && (
         <div className={`age-gate ${isHidingAgeGate ? "is-hiding" : ""}`} role="dialog" aria-modal="true" aria-labelledby="age-title">
-          <div className="age-gate__panel" style={{ maxHeight: "calc(100vh - 2rem)", overflowY: "auto" }}>
+          <div className="age-gate__panel">
             <p className="eyebrow">Conteúdo adulto</p>
             <h2 id="age-title">Acesso restrito a maiores de 18 anos</h2>
             <p>Ao continuar, você confirma ser maior de idade e concorda com os termos de uso e política de privacidade.</p>
-            <div style={{ display: "grid", gap: "0.75rem", margin: "1.2rem 0", textAlign: "left" }}>
-              <div style={{ padding: "0.95rem", borderRadius: "0.85rem", border: "1px solid rgba(212,175,55,0.28)", background: "rgba(212,175,55,0.08)" }}>
-                <strong style={{ display: "block", color: "var(--champagne)", marginBottom: "0.35rem" }}>Aviso institucional</strong>
-                <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.55 }}>
+            <div className="age-gate__notice-list">
+              <div className="age-gate__notice age-gate__notice--institutional">
+                <strong>Aviso institucional</strong>
+                <p>
                   O Delírio Privê atua exclusivamente como plataforma de divulgação de perfis independentes. Não somos agência,
                   boate, casa de atendimento, intermediadores ou representantes das anunciantes. Toda negociação acontece
                   diretamente entre visitante e anunciante.
                 </p>
               </div>
 
-              <div style={{ padding: "0.95rem", borderRadius: "0.85rem", border: "1px solid rgba(239,68,68,0.32)", background: "rgba(239,68,68,0.08)" }}>
-                <strong style={{ display: "block", color: "#fca5a5", marginBottom: "0.35rem" }}>Alerta contra golpes</strong>
-                <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.55 }}>
+              <div className="age-gate__notice age-gate__notice--warning">
+                <strong>Alerta contra golpes</strong>
+                <p>
                   O Delírio Privê não solicita prints de conversas, vídeos de clientes, códigos, senhas ou pagamentos para
                   terceiros. Desconfie de perfis, agenciadores ou supostos representantes usando o nome do site. Antes de
                   qualquer pagamento, confirme diretamente com a administração oficial. Não respondemos intermediários,
                   agenciadores ou terceiros.
                 </p>
-                <Link href="/cadastro-whatsapp" style={{ display: "inline-flex", marginTop: "0.65rem", color: "var(--gold-primary)", fontSize: "0.85rem", fontWeight: 800, textDecoration: "underline" }}>
+                <Link href="/cadastro-whatsapp" className="age-gate__policy-link">
                   Ver alertas e política de anúncios
                 </Link>
               </div>
