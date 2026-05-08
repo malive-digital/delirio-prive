@@ -10,28 +10,12 @@ export function AgeGate() {
   const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
 
   useEffect(() => {
-    let introPending = pathname === "/";
-
-    const syncAgeGate = () => {
-      if (sessionStorage.getItem("ageConfirmed")) {
-        setShowAgeGate(false);
-        return;
-      }
-
-      setShowAgeGate(!introPending);
+    if (sessionStorage.getItem("ageConfirmed")) {
+      setShowAgeGate(false);
+      return;
     };
 
-    const handleIntroFinished = () => {
-      introPending = false;
-      syncAgeGate();
-    };
-
-    syncAgeGate();
-    window.addEventListener("delirio:intro-finished", handleIntroFinished);
-
-    return () => {
-      window.removeEventListener("delirio:intro-finished", handleIntroFinished);
-    };
+    setShowAgeGate(true);
   }, [pathname]);
 
   const handleAgeConfirm = () => {

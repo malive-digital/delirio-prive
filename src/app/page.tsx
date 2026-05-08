@@ -8,7 +8,6 @@ import { AuthNavLink } from "@/components/AuthNavLink";
 export default function Home() {
   const router = useRouter();
   const [showInterestModal, setShowInterestModal] = useState(false);
-  const [showIntroVideo, setShowIntroVideo] = useState(false);
 
   useEffect(() => {
     const continueHomeFlow = () => {
@@ -22,8 +21,6 @@ export default function Home() {
       }
     };
 
-    setShowIntroVideo(true);
-
     if (sessionStorage.getItem("ageConfirmed")) {
       continueHomeFlow();
     }
@@ -35,22 +32,6 @@ export default function Home() {
     };
   }, [router]);
 
-  const finishIntroVideo = () => {
-    setShowIntroVideo(false);
-    window.dispatchEvent(new Event("delirio:intro-finished"));
-
-    const ageConfirmed = sessionStorage.getItem("ageConfirmed");
-    const userPreference = localStorage.getItem("userPreference");
-
-    if (!ageConfirmed) {
-      return;
-    } else if (userPreference) {
-      router.push(userPreference);
-    } else {
-      setShowInterestModal(true);
-    }
-  };
-
   const handleInterestSelect = (target: string) => {
     localStorage.setItem("userPreference", target);
     router.push(target);
@@ -58,23 +39,6 @@ export default function Home() {
 
   return (
     <div className="entry-page">
-      {showIntroVideo && (
-        <div className="intro-video" aria-label="Abertura Delírio Privê">
-          <video
-            className="intro-video__media"
-            src="/assets/intro.mp4"
-            autoPlay
-            muted
-            playsInline
-            onEnded={finishIntroVideo}
-            onError={finishIntroVideo}
-          />
-          <button className="intro-video__skip" type="button" onClick={finishIntroVideo}>
-            Pular
-          </button>
-        </div>
-      )}
-
       {showInterestModal && (
         <div className="interest-modal" role="dialog" aria-modal="true" aria-labelledby="interest-title">
           <div className="interest-modal__panel">
