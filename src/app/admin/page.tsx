@@ -67,6 +67,23 @@ type PartnershipPromotion = {
   created_at: string | null;
 };
 
+type AdminContact = {
+  id: string;
+  name: string;
+  phone: string;
+  phone_normalized: string | null;
+  sale_closed: boolean;
+  admin_user_id: string | null;
+  admin_name: string;
+  admin_email: string | null;
+  sale_closed_at: string | null;
+  sale_closed_by_admin_user_id: string | null;
+  sale_closed_by_admin_name: string | null;
+  sale_closed_by_admin_email: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 const emptyPartnershipForm = {
   title: "",
   partner_name: "",
@@ -78,9 +95,16 @@ const emptyPartnershipForm = {
   is_active: true,
 };
 
+const emptyContactForm = {
+  name: "",
+  phone: "",
+  sale_closed: false,
+};
+
 const DOCUMENTS_PER_PAGE = 10;
 const PROFILES_PER_PAGE = 10;
 const SUBSCRIPTIONS_PER_PAGE = 10;
+const CONTACTS_PER_PAGE = 10;
 
 const emptyProfileEditForm = {
   name: "",
@@ -120,6 +144,8 @@ const formatDateTimeSP = (value?: string | null) => {
   }).format(new Date(value));
 };
 
+const normalizePhone = (value: string) => value.replace(/\D/g, "");
+
 const pendingProfileDocuments = (profiles: Profile[]) => {
   return profiles.filter((profile) => profile.profile_approval_status === "pending" && profile.user_document_path);
 };
@@ -140,6 +166,11 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [contacts, setContacts] = useState<AdminContact[]>([]);
+  const [contactForm, setContactForm] = useState(emptyContactForm);
+  const [contactStatus, setContactStatus] = useState("");
+  const [contactPage, setContactPage] = useState(1);
+  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; name: string; email: string | null } | null>(null);
   const [partnerships, setPartnerships] = useState<PartnershipPromotion[]>([]);
   const [partnershipForm, setPartnershipForm] = useState(emptyPartnershipForm);
   const [partnershipStatus, setPartnershipStatus] = useState("");
@@ -162,6 +193,20 @@ export default function AdminDashboard() {
       .order("created_at", { ascending: false });
 
     setPartnerships(data || []);
+  };
+
+  const loadContacts = async () => {
+    const { data, error } = await supabase
+      .from("admin_contacts")
+      .select("id,name,phone,phone_normalized,sale_closed,admin_user_id,admin_name,admin_email,sale_closed_at,sale_closed_by_admin_user_id,sale_closed_by_admin_name,sale_closed_by_admin_email,created_at,updated_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setContactStatus(`Nao foi possivel carregar contatos: ${error.message}`);
+      return;
+    }
+
+    setContacts(data || []);
   };
 
   const loadProfiles = async () => {
@@ -211,6 +256,9 @@ export default function AdminDashboard() {
       }
 
       const userEmail = user.email.toLowerCase();
+      const adminName =
+        String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim() ||
+        userEmail;
       let isAdmin = ADMIN_EMAILS.includes(userEmail);
 
       const [roleResult, legacyAdminResult] = await Promise.all([
@@ -227,7 +275,9 @@ export default function AdminDashboard() {
         return;
       }
 
-      const [profilesResult, subscriptionsResult, mediaResult] = await Promise.all([
+      setCurrentAdmin({ id: user.id, name: adminName, email: user.email || null });
+
+      const [profilesResult, subscriptionsResult, mediaResult, contactsResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
@@ -237,6 +287,10 @@ export default function AdminDashboard() {
           .from("profile_media")
           .select("id,profile_id,user_id,file_name,media_type,public_url,storage_path,approval_status,is_cover,created_at,profiles(name,type,location)")
           .order("is_cover", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("admin_contacts")
+          .select("id,name,phone,phone_normalized,sale_closed,admin_user_id,admin_name,admin_email,sale_closed_at,sale_closed_by_admin_user_id,sale_closed_by_admin_name,sale_closed_by_admin_email,created_at,updated_at")
           .order("created_at", { ascending: false }),
       ]);
 
@@ -253,6 +307,12 @@ export default function AdminDashboard() {
 
       if (!mediaResult.error) {
         setMediaItems(normalizeProfileMediaRows(mediaResult.data || []));
+      }
+
+      if (contactsResult.error) {
+        setContactStatus(`Nao foi possivel carregar contatos: ${contactsResult.error.message}`);
+      } else {
+        setContacts(contactsResult.data || []);
       }
 
       await loadPartnerships();
@@ -305,6 +365,23 @@ export default function AdminDashboard() {
     (subscriptionPage - 1) * SUBSCRIPTIONS_PER_PAGE,
     subscriptionPage * SUBSCRIPTIONS_PER_PAGE,
   );
+  const closedContacts = contacts.filter((contact) => contact.sale_closed).length;
+  const contactCloseRate = contacts.length ? Math.round((closedContacts / contacts.length) * 100) : 0;
+  const contactCloserStats = useMemo(() => {
+    return contacts
+      .filter((contact) => contact.sale_closed)
+      .reduce<Record<string, number>>((acc, contact) => {
+        const adminName = contact.sale_closed_by_admin_name || contact.admin_name || "Administrador";
+        acc[adminName] = (acc[adminName] || 0) + 1;
+        return acc;
+      }, {});
+  }, [contacts]);
+  const topContactCloser = Object.entries(contactCloserStats).sort((a, b) => b[1] - a[1])[0] || null;
+  const contactPageCount = Math.max(1, Math.ceil(contacts.length / CONTACTS_PER_PAGE));
+  const visibleContacts = contacts.slice(
+    (contactPage - 1) * CONTACTS_PER_PAGE,
+    contactPage * CONTACTS_PER_PAGE,
+  );
   const getProfileSubscription = (profileId: string) => {
     return subscriptions.find((subscription) => subscription.profile_id === profileId || subscription.user_id === profileId) || null;
   };
@@ -326,6 +403,116 @@ export default function AdminDashboard() {
       setSubscriptionPage(subscriptionPageCount);
     }
   }, [subscriptionPage, subscriptionPageCount]);
+
+  useEffect(() => {
+    if (contactPage > contactPageCount) {
+      setContactPage(contactPageCount);
+    }
+  }, [contactPage, contactPageCount]);
+
+  const handleContactSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = contactForm.name.trim();
+    const phone = contactForm.phone.trim();
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!name || !phone) {
+      setContactStatus("Informe nome e telefone do contato.");
+      return;
+    }
+
+    if (!normalizedPhone) {
+      setContactStatus("Informe um telefone valido.");
+      return;
+    }
+
+    const existingContact = contacts.find((contact) => {
+      const existingPhone = contact.phone_normalized || normalizePhone(contact.phone);
+      return existingPhone === normalizedPhone;
+    });
+
+    if (existingContact) {
+      setContactStatus(`Este telefone ja foi adicionado para ${existingContact.name}.`);
+      return;
+    }
+
+    setContactStatus("Salvando contato...");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const adminEmail = user?.email || currentAdmin?.email || null;
+    const adminName =
+      String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim() ||
+      currentAdmin?.name ||
+      adminEmail ||
+      "Administrador";
+
+    const { error } = await supabase.from("admin_contacts").insert({
+      name,
+      phone,
+      phone_normalized: normalizedPhone,
+      sale_closed: contactForm.sale_closed,
+      admin_user_id: user?.id || currentAdmin?.id || null,
+      admin_name: adminName,
+      admin_email: adminEmail,
+      sale_closed_at: contactForm.sale_closed ? new Date().toISOString() : null,
+      sale_closed_by_admin_user_id: contactForm.sale_closed ? user?.id || currentAdmin?.id || null : null,
+      sale_closed_by_admin_name: contactForm.sale_closed ? adminName : null,
+      sale_closed_by_admin_email: contactForm.sale_closed ? adminEmail : null,
+    });
+
+    if (error) {
+      if (error.code === "23505") {
+        setContactStatus("Este telefone ja foi adicionado anteriormente.");
+        return;
+      }
+
+      setContactStatus(`Erro ao salvar contato: ${error.message}`);
+      return;
+    }
+
+    setContactForm(emptyContactForm);
+    setContactPage(1);
+    setContactStatus("Contato registrado com sucesso.");
+    await loadContacts();
+  };
+
+  const toggleContactSale = async (contact: AdminContact) => {
+    setContactStatus("Atualizando contato...");
+
+    const closingSale = !contact.sale_closed;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const adminEmail = user?.email || currentAdmin?.email || null;
+    const adminName =
+      String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim() ||
+      currentAdmin?.name ||
+      adminEmail ||
+      "Administrador";
+
+    const { error } = await supabase
+      .from("admin_contacts")
+      .update({
+        sale_closed: closingSale,
+        sale_closed_at: closingSale ? new Date().toISOString() : null,
+        sale_closed_by_admin_user_id: closingSale ? user?.id || currentAdmin?.id || null : null,
+        sale_closed_by_admin_name: closingSale ? adminName : null,
+        sale_closed_by_admin_email: closingSale ? adminEmail : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", contact.id);
+
+    if (error) {
+      setContactStatus(`Erro ao atualizar contato: ${error.message}`);
+      return;
+    }
+
+    setContactStatus(closingSale ? "Venda marcada como fechada." : "Venda marcada como nao fechada.");
+    await loadContacts();
+  };
 
   const handlePartnershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -615,18 +802,19 @@ export default function AdminDashboard() {
         </nav>
       </header>
 
-      <main className="app-page dashboard" style={{ maxWidth: "1400px", margin: "0 auto", padding: "2rem" }}>
-        <div style={{ marginBottom: "2rem" }}>
+      <main className="app-page dashboard admin-dashboard-page" style={{ maxWidth: "1400px", margin: "0 auto", padding: "2rem" }}>
+        <div className="admin-dashboard-heading" style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "2.5rem", margin: 0 }}>Gestão Geral da Plataforma</h1>
           <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>{message}</p>
         </div>
 
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", borderBottom: "1px solid rgba(245, 230, 200, 0.1)", paddingBottom: "1rem", overflowX: "auto" }}>
+        <div className="admin-dashboard-tabs" style={{ display: "flex", gap: "1rem", marginBottom: "2rem", borderBottom: "1px solid rgba(245, 230, 200, 0.1)", paddingBottom: "1rem", overflowX: "auto" }}>
           {[
             { id: "aprovacoes", label: "Aprovações" },
             { id: "documentos", label: "Documentação" },
             { id: "perfis", label: "Gerenciar Perfis" },
             { id: "financeiro", label: "Visão Financeira" },
+            { id: "contatos", label: "Contatos" },
             { id: "parcerias", label: "Parcerias e Promoções" },
           ].map((tab) => (
             <button
@@ -648,7 +836,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div style={{ background: "rgba(10, 10, 10, 0.4)", border: "1px solid rgba(245, 230, 200, 0.08)", borderRadius: "1.25rem", padding: "clamp(1.25rem, 4vw, 2.5rem)", backdropFilter: "blur(12px)", boxShadow: "0 20px 40px rgba(0,0,0,0.3)", overflowX: "auto" }}>
+        <div className="admin-dashboard-panel" style={{ background: "rgba(10, 10, 10, 0.4)", border: "1px solid rgba(245, 230, 200, 0.08)", borderRadius: "1.25rem", padding: "clamp(1.25rem, 4vw, 2.5rem)", backdropFilter: "blur(12px)", boxShadow: "0 20px 40px rgba(0,0,0,0.3)", overflowX: "auto" }}>
           {loading && <p style={{ color: "var(--text-secondary)" }}>Carregando...</p>}
 
           {!loading && activeTab === "aprovacoes" && (
@@ -670,7 +858,7 @@ export default function AdminDashboard() {
                   ) : (
                     <div style={{ display: "grid", gap: "0.85rem" }}>
                       {mediaItems.filter((item) => item.approval_status === "pending").map((item) => (
-                        <article key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                        <article className="admin-list-item admin-list-item--media" key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                           <div className="watermarked-media watermarked-media--admin-thumb">
                             {item.media_type === "video" && item.public_url ? (
                               <video src={item.public_url} muted />
@@ -719,7 +907,7 @@ export default function AdminDashboard() {
                   ) : (
                     <div style={{ display: "grid", gap: "0.85rem" }}>
                       {pendingProfileDocuments(profiles).map((profile) => (
-                        <article key={profile.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                        <article className="admin-list-item" key={profile.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                           <div>
                             <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
                             <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
@@ -751,7 +939,7 @@ export default function AdminDashboard() {
                   ) : (
                     <div style={{ display: "grid", gap: "1rem" }}>
                       {profiles.filter((profile) => profile.profile_approval_status === "pending").map((profile) => (
-                    <article key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                    <article className="admin-list-item" key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
                         <div>
                           <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
@@ -829,7 +1017,7 @@ export default function AdminDashboard() {
               ) : (
                 <div style={{ display: "grid", gap: "0.85rem" }}>
                   {visibleDocumentProfiles.map((profile) => (
-                    <article key={profile.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "1rem", alignItems: "center", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                    <article className="admin-list-item" key={profile.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "1rem", alignItems: "center", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                       <div style={{ minWidth: 0 }}>
                         <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
                         <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
@@ -898,7 +1086,7 @@ export default function AdminDashboard() {
                         const endDate = getSubscriptionEndDate(subscription);
 
                         return (
-                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(8rem, 0.7fr) minmax(8rem, 0.7fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
+                      <div className="admin-profile-row" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(8rem, 0.7fr) minmax(8rem, 0.7fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
                         <div style={{ minWidth: 0 }}>
                           <strong style={{ color: "white" }}>{profile.name}</strong>
                           <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>{profile.location || "Localização não informada"}</p>
@@ -958,7 +1146,7 @@ export default function AdminDashboard() {
             <div>
               <h2 style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>Receita e Assinaturas</h2>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
+                <div className="admin-metric-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
                 <div style={{ background: "rgba(18,18,18,0.6)", padding: "1.5rem", borderRadius: "1rem", border: "1px solid rgba(245,230,200,0.1)" }}>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", fontWeight: "bold" }}>Perfis na base</p>
                   <strong style={{ display: "block", fontSize: "2.5rem", color: "white", margin: "0.5rem 0" }}>{profiles.length}</strong>
@@ -1019,6 +1207,142 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {!loading && activeTab === "contatos" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+                <div>
+                  <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Controle de Contatos</h2>
+                  <p style={{ color: "var(--text-secondary)", margin: "0.35rem 0 0" }}>
+                    {contacts.length} contato(s) registrado(s), {closedContacts} venda(s) fechada(s)
+                  </p>
+                </div>
+                {currentAdmin && (
+                  <span style={{ padding: "0.4rem 0.8rem", borderRadius: "999px", background: "rgba(212,175,55,0.1)", color: "var(--gold-primary)", fontWeight: 800, fontSize: "0.86rem" }}>
+                    {currentAdmin.name}
+                  </span>
+                )}
+              </div>
+
+              <form onSubmit={handleContactSubmit} style={{ display: "grid", gap: "1rem", marginBottom: "2rem" }}>
+                <div className="admin-contact-form-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) auto", gap: "1rem", alignItems: "end" }}>
+                  <label className="input-group">
+                    <span>Nome do contato</span>
+                    <input
+                      required
+                      value={contactForm.name}
+                      onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })}
+                      placeholder="Ex: Bianca Souza"
+                      style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}
+                    />
+                  </label>
+                  <label className="input-group">
+                    <span>Telefone</span>
+                    <input
+                      required
+                      value={contactForm.phone}
+                      onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })}
+                      placeholder="(00) 00000-0000"
+                      style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}
+                    />
+                  </label>
+                  <label style={{ minHeight: "3rem", display: "inline-flex", alignItems: "center", gap: "0.6rem", color: "var(--text-secondary)", fontWeight: 800 }}>
+                    <input
+                      type="checkbox"
+                      checked={contactForm.sale_closed}
+                      onChange={(event) => setContactForm({ ...contactForm, sale_closed: event.target.checked })}
+                    />
+                    Venda fechada
+                  </label>
+                </div>
+                <button className="button button--primary" type="submit" style={{ justifySelf: "start", padding: "0.9rem 1.4rem" }}>
+                  Adicionar contato
+                </button>
+                {contactStatus && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{contactStatus}</p>}
+              </form>
+
+              <div className="admin-contact-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+                <article style={{ padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.8rem", background: "rgba(18,18,18,0.55)" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Contatos feitos</span>
+                  <strong style={{ display: "block", marginTop: "0.35rem", color: "white", fontSize: "2rem" }}>{contacts.length}</strong>
+                </article>
+                <article style={{ padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.8rem", background: "rgba(18,18,18,0.55)" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Vendas fechadas</span>
+                  <strong style={{ display: "block", marginTop: "0.35rem", color: "#4ade80", fontSize: "2rem" }}>{closedContacts}</strong>
+                </article>
+                <article style={{ padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.8rem", background: "rgba(18,18,18,0.55)" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Taxa de fechamento</span>
+                  <strong style={{ display: "block", marginTop: "0.35rem", color: "white", fontSize: "2rem" }}>{contactCloseRate}%</strong>
+                </article>
+                <article style={{ padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.8rem", background: "rgba(18,18,18,0.55)" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Quem fechou mais</span>
+                  <strong style={{ display: "block", marginTop: "0.35rem", color: "white", fontSize: "1rem" }}>{topContactCloser?.[0] || "Sem vendas"}</strong>
+                  <span style={{ display: "block", marginTop: "0.25rem", color: "var(--gold-primary)", fontWeight: 800 }}>
+                    {topContactCloser ? `${topContactCloser[1]} venda(s)` : "0 venda"}
+                  </span>
+                </article>
+              </div>
+
+              {Object.keys(contactCloserStats).length > 0 && (
+                <div style={{ display: "flex", gap: "0.55rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+                  {Object.entries(contactCloserStats)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([adminName, total]) => (
+                      <span key={adminName} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(74,222,128,0.22)", borderRadius: "999px", background: "rgba(74,222,128,0.08)", color: "#d8ffe2", fontWeight: 800, fontSize: "0.82rem" }}>
+                        {adminName}: {total}
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              {contacts.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)" }}>Nenhum contato registrado ainda.</p>
+              ) : (
+                <div style={{ display: "grid", gap: "0.85rem" }}>
+                  {visibleContacts.map((contact) => (
+                    <article className="admin-list-item admin-contact-item" key={contact.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) auto", gap: "1rem", alignItems: "center", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
+                      <div>
+                        <strong style={{ display: "block", color: "white" }}>{contact.name}</strong>
+                        <a href={`tel:${contact.phone}`} style={{ display: "inline-block", marginTop: "0.25rem", color: "var(--text-secondary)" }}>
+                          {contact.phone}
+                        </a>
+                      </div>
+                      <div>
+                        <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Adicionado em</span>
+                        <p style={{ margin: "0.25rem 0 0", color: "white" }}>{formatDateTimeSP(contact.created_at)}</p>
+                      </div>
+                      <div>
+                        <span style={{ color: "var(--text-secondary)", fontSize: "0.82rem", fontWeight: 800 }}>Administrador</span>
+                        <p style={{ margin: "0.25rem 0 0", color: "white" }}>{contact.admin_name}</p>
+                        {contact.sale_closed && (
+                          <small style={{ display: "block", marginTop: "0.25rem", color: "var(--gold-primary)", fontWeight: 800 }}>
+                            Fechou: {contact.sale_closed_by_admin_name || contact.admin_name}
+                          </small>
+                        )}
+                      </div>
+                      <button
+                        className={contact.sale_closed ? "button button--primary" : "button button--ghost"}
+                        type="button"
+                        onClick={() => toggleContactSale(contact)}
+                      >
+                        {contact.sale_closed ? "Venda fechada" : "Nao fechou"}
+                      </button>
+                    </article>
+                  ))}
+
+                  {contacts.length > CONTACTS_PER_PAGE && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Página {contactPage} de {contactPageCount}</span>
+                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <button className="button button--ghost" type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))}>Anterior</button>
+                        <button className="button button--ghost" type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))}>Próxima</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {!loading && activeTab === "parcerias" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
@@ -1069,7 +1393,7 @@ export default function AdminDashboard() {
                 {partnerships.length === 0 ? (
                   <p style={{ color: "var(--text-secondary)" }}>Nenhuma parceria cadastrada.</p>
                 ) : partnerships.map((item) => (
-                  <div key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.5rem", background: "rgba(18,18,18,0.5)" }}>
+                  <div className="admin-list-item admin-list-item--media" key={item.id} style={{ display: "grid", gridTemplateColumns: "4.5rem 1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.5rem", background: "rgba(18,18,18,0.5)" }}>
                     <img src={item.image_url} alt="" style={{ width: "4.5rem", height: "4.5rem", objectFit: "contain", borderRadius: "0.35rem", background: "#080808" }} />
                     <div>
                       <strong style={{ color: "white" }}>{item.title}</strong>

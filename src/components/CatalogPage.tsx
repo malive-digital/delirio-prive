@@ -260,8 +260,8 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
           <p className="profile-card__location">{[profile.location, profile.state_uf].filter(Boolean).join(" - ") || "Localizacao nao informada"}</p>
           {profile.description && <p className="profile-card__description">{profile.description}</p>}
           <div className="trust-row">
-            {profile.is_online && <span>Online</span>}
-            {profile.profile_verified && <span>Verificado</span>}
+            {profile.is_online && <span className="trust-pill trust-pill--online">Online</span>}
+            {profile.profile_verified && <span className="trust-pill trust-pill--verified">Verificado</span>}
           </div>
         </div>
       </Link>

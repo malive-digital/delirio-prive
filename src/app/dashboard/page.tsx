@@ -946,8 +946,8 @@ export default function Dashboard() {
                         <p>{profile.location || "Localização"}</p>
                         {profile.description && <p>{profile.description}</p>}
                         <div className="trust-row">
-                          {profile.is_online && <span>Online</span>}
-                          {profile.profile_approval_status === "approved" && <span>Verificado</span>}
+                          {profile.is_online && <span className="trust-pill trust-pill--online">Online</span>}
+                          {profile.profile_approval_status === "approved" && <span className="trust-pill trust-pill--verified">Verificado</span>}
                         </div>
                       </div>
                     </article>
