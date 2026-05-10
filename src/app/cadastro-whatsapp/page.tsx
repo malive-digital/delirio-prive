@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { AuthNavLink } from "@/components/AuthNavLink";
 
 const lauraWhatsapp = "5562993326790";
+const alexandreWhatsapp = "5562998589913";
 function CadastroWhatsappContent() {
   const searchParams = useSearchParams();
   const plano = searchParams.get("plano");
@@ -15,6 +16,7 @@ function CadastroWhatsappContent() {
       : "Olá, Laura! Tenho dúvidas ou interesse em me cadastrar no site Delírio Privê. Pode me orientar?",
   );
   const lauraWaLink = `https://wa.me/${lauraWhatsapp}?text=${message}`;
+  const alexandreWaLink = `https://wa.me/${alexandreWhatsapp}?text=${encodeURIComponent(decodeURIComponent(message).replace("Laura", "Alexandre"))}`;
 
   return (
     <div className="entry-page cadastro-page">
@@ -44,9 +46,9 @@ function CadastroWhatsappContent() {
               <a className="button button--primary" href={lauraWaLink} target="_blank" rel="noreferrer">
                 Consultora Laura
               </a>
-              <button className="button button--ghost is-disabled" type="button" disabled title="Aguardando número oficial">
+              <a className="button button--ghost" href={alexandreWaLink} target="_blank" rel="noreferrer">
                 Consultor Alexandre
-              </button>
+              </a>
               <Link className="button button--ghost" href="/planos">
                 Ver planos
               </Link>
