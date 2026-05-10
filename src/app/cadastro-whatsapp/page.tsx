@@ -46,7 +46,7 @@ function CadastroWhatsappContent() {
               <a className="button button--primary" href={lauraWaLink} target="_blank" rel="noreferrer">
                 Consultora Laura
               </a>
-              <a className="button button--ghost" href={alexandreWaLink} target="_blank" rel="noreferrer">
+              <a className="button button--primary" href={alexandreWaLink} target="_blank" rel="noreferrer">
                 Consultor Alexandre
               </a>
               <Link className="button button--ghost" href="/planos">
