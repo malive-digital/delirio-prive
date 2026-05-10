@@ -842,6 +842,7 @@ export default function Dashboard() {
           <Link href="/">Início</Link>
           <Link href="/planos">Planos</Link>
           <Link href="/parcerias-promocoes">Parcerias</Link>
+          <Link href="/redefinir-senha">Trocar senha</Link>
           <button className="nav-button" type="button" onClick={handleLogout}>Sair</button>
         </nav>
       </header>

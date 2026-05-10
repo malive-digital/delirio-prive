@@ -18,7 +18,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     const redirectLoggedUser = async () => {
@@ -49,6 +51,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     localStorage.setItem("delirioSessionPersistence", rememberMe ? "local" : "session");
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -126,6 +129,30 @@ export default function Login() {
       sessionStorage.removeItem("hasActivePlan");
       router.push("/cobranca");
     }
+  };
+
+  const handlePasswordReset = async () => {
+    setError("");
+    setNotice("");
+
+    const userEmail = email.trim();
+    if (!userEmail) {
+      setError("Informe seu e-mail para receber o link de redefinição de senha.");
+      return;
+    }
+
+    setResetLoading(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    setResetLoading(false);
+
+    if (resetError) {
+      setError("Não foi possível enviar o link de redefinição agora. Tente novamente em instantes.");
+      return;
+    }
+
+    setNotice("Enviamos um link para redefinir sua senha no e-mail informado.");
   };
 
   const inputStyle: React.CSSProperties = {
@@ -250,6 +277,21 @@ export default function Login() {
             </div>
           )}
 
+          {notice && (
+            <div
+              style={{
+                padding: "0.8rem",
+                background: "rgba(34,197,94,0.1)",
+                border: "1px solid rgba(34,197,94,0.3)",
+                borderRadius: "0.5rem",
+                color: "#86efac",
+                fontSize: "0.9rem",
+              }}
+            >
+              {notice}
+            </div>
+          )}
+
           {/* Campos */}
           <label className="input-group" style={{ textAlign: "left" }}>
             <span>E-mail</span>
@@ -284,12 +326,23 @@ export default function Login() {
               />
               Permanecer logado
             </label>
-            <Link
-              href="#"
-              style={{ fontSize: "0.85rem", color: "var(--gold-primary)", textDecoration: "underline" }}
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={resetLoading}
+              style={{
+                background: "transparent",
+                border: 0,
+                padding: 0,
+                cursor: resetLoading ? "wait" : "pointer",
+                font: "inherit",
+                fontSize: "0.85rem",
+                color: "var(--gold-primary)",
+                textDecoration: "underline",
+              }}
             >
-              Esqueceu a senha?
-            </Link>
+              {resetLoading ? "Enviando..." : "Esqueceu a senha?"}
+            </button>
           </div>
 
           <button
