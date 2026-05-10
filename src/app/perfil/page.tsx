@@ -241,7 +241,7 @@ export default function PerfilPage() {
                     <dd>{profile.is_online ? "Online" : "Offline"}</dd>
                   </div>
                   <div>
-                    <dt>Atende</dt>
+                    <dt>Atendimento</dt>
                     <dd>{profile.serves || "Não informado"}</dd>
                   </div>
                   <div>

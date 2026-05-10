@@ -6,7 +6,6 @@ export default function HomensPage() {
       title="Homens"
       type="homem"
       activeHref="/homens"
-      intro="Perfis masculinos cadastrados pela administração."
     />
   );
 }

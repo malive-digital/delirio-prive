@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getPlanConfig } from "@/lib/plans";
 import { AuthNavLink } from "@/components/AuthNavLink";
 
-export default function Cobranca() {
+export default function Planos() {
   const [selectedPlan, setSelectedPlan] = useState("Top Privê");
   const planHref = (planName: string) => `/cadastro-whatsapp?plano=${encodeURIComponent(planName)}`;
 
@@ -54,17 +54,21 @@ export default function Cobranca() {
       <main className="app-page">
         <div className="page-title">
           <div>
-            <p className="eyebrow">Monetização</p>
-            <h1>Planos de destaque</h1>
+            <h1>Planos</h1>
           </div>
           <p>Escolha como seu perfil aparece na plataforma.</p>
         </div>
 
+        <div className="plan-trial-notice" role="note">
+          <strong>7 dias grátis ao cadastrar.</strong>
+          <span>Após o período gratuito, você pode escolher o plano ideal para manter seu perfil em destaque.</span>
+        </div>
+
         <section className="pricing-grid" aria-label="Planos disponíveis" style={{ maxWidth: "1000px", margin: "0 auto 4rem" }}>
           {plans.map((plan) => (
-            <article 
-              key={plan.name} 
-              className={`plan ${plan.badge ? "plan--featured" : ""} ${selectedPlan === plan.name ? "is-selected" : ""}`} 
+            <article
+              key={plan.name}
+              className={`plan ${plan.badge ? "plan--featured" : ""} ${selectedPlan === plan.name ? "is-selected" : ""}`}
               onClick={() => setSelectedPlan(plan.name)}
               style={{ cursor: "pointer", transition: "transform 0.3s ease, box-shadow 0.3s ease", padding: "2rem" }}
               onMouseOver={(e) => {
@@ -99,8 +103,6 @@ export default function Cobranca() {
             </article>
           ))}
         </section>
-
-
       </main>
     </>
   );

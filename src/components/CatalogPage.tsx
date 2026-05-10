@@ -33,7 +33,6 @@ type CatalogPageProps = {
   title: string;
   type: string;
   activeHref: string;
-  intro: string;
 };
 
 const BRAZIL_UFS = [
@@ -56,7 +55,6 @@ const UF_BOXES = [
   { uf: "GO", minLat: -19.5, maxLat: -12.4, minLng: -53.3, maxLng: -45.9 },
 ];
 
-const PLAN_FILTERS = ["Basico", "Premium", "Top Prive"];
 const SERVES_FILTERS = ["Homens", "Mulheres", "Casais", "Trans"];
 const PLACE_FILTERS = [
   { value: "com_local", label: "Com local" },
@@ -80,11 +78,10 @@ const detectUfFromCoords = (latitude: number, longitude: number) => {
   return UF_BOXES.find((box) => latitude >= box.minLat && latitude <= box.maxLat && longitude >= box.minLng && longitude <= box.maxLng)?.uf || "";
 };
 
-export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps) {
+export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
   const [profiles, setProfiles] = useState<CatalogProfile[]>([]);
   const [search, setSearch] = useState("");
   const [selectedUf, setSelectedUf] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedServes, setSelectedServes] = useState("");
   const [selectedPlace, setSelectedPlace] = useState("");
@@ -179,8 +176,6 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
     return profiles
       .filter((profile) => {
         const matchesUf = !selectedUf || profile.state_uf === selectedUf;
-        const plan = getPlanConfig(profile.active_plan || "Basico");
-        const matchesPlan = !selectedPlan || plan.key === selectedPlan;
         const matchesStatus = !selectedStatus || (selectedStatus === "online" ? profile.is_online : profile.profile_verified);
         const matchesServes = !selectedServes || (profile.serves || "").toLowerCase().includes(selectedServes.toLowerCase());
         const matchesPlace = !selectedPlace || profile.has_place === selectedPlace;
@@ -191,14 +186,14 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
           .toLowerCase()
           .includes(normalizedSearch);
 
-        return matchesUf && matchesPlan && matchesStatus && matchesServes && matchesPlace && matchesPayment && matchesSearch;
+        return matchesUf && matchesStatus && matchesServes && matchesPlace && matchesPayment && matchesSearch;
       })
       .sort((a, b) => {
         const planA = getPlanConfig(a.active_plan || "Basico").key;
         const planB = getPlanConfig(b.active_plan || "Basico").key;
         return PLAN_ORDER[planA] - PLAN_ORDER[planB];
       });
-  }, [profiles, search, selectedUf, selectedPlan, selectedStatus, selectedServes, selectedPlace, selectedPayment]);
+  }, [profiles, search, selectedUf, selectedStatus, selectedServes, selectedPlace, selectedPayment]);
 
   const handleUfChange = (uf: string) => {
     setSelectedUf(uf);
@@ -210,10 +205,9 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
     localStorage.removeItem("delirioPreferredUf");
   };
 
-  const activeFilterCount = [selectedUf, selectedPlan, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
+  const activeFilterCount = [selectedUf, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
 
   const clearFilters = () => {
-    setSelectedPlan("");
     setSelectedStatus("");
     setSelectedServes("");
     setSelectedPlace("");
@@ -294,7 +288,6 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
           <div>
             <p className="eyebrow">Catalogo</p>
             <h1>{title}</h1>
-            <p className="page-intro">{intro}</p>
           </div>
           <nav className="category-switcher" aria-label="Trocar categoria">
             <Link className={activeHref === "/mulheres" ? "is-active" : ""} href="/mulheres">Mulheres</Link>
@@ -311,7 +304,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                   <span>Buscar perfil</span>
                   <input
                     type="search"
-                    placeholder="Nome, localizacao ou descricao"
+                    placeholder="Nome, localização ou descrição"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -342,15 +335,6 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                     </select>
                   </label>
                   <label>
-                    <span>Plano</span>
-                    <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)}>
-                      <option value="">Todos</option>
-                      {PLAN_FILTERS.map((plan) => (
-                        <option key={plan} value={plan}>{getPlanConfig(plan).displayName}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
                     <span>Status</span>
                     <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
                       <option value="">Todos</option>
@@ -359,7 +343,7 @@ export function CatalogPage({ title, type, activeHref, intro }: CatalogPageProps
                     </select>
                   </label>
                   <label>
-                    <span>Atende</span>
+                    <span>Atendimento</span>
                     <select value={selectedServes} onChange={(event) => setSelectedServes(event.target.value)}>
                       <option value="">Todos</option>
                       {SERVES_FILTERS.map((serves) => (

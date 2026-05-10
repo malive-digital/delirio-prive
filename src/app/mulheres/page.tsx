@@ -6,7 +6,6 @@ export default function MulheresPage() {
       title="Mulheres"
       type="mulher"
       activeHref="/mulheres"
-      intro="Perfis femininos cadastrados pela administração."
     />
   );
 }

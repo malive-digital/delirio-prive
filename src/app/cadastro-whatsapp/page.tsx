@@ -5,18 +5,16 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthNavLink } from "@/components/AuthNavLink";
 
-const adminWhatsapp = "5511999999999";
-const displayWhatsapp = "(11) 99999-9999";
-
+const lauraWhatsapp = "5562993326790";
 function CadastroWhatsappContent() {
   const searchParams = useSearchParams();
   const plano = searchParams.get("plano");
   const message = encodeURIComponent(
     plano
-      ? `Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil no plano ${plano}. Podem me orientar pelo atendimento oficial?`
-      : "Olá, equipe Delírio Privê! Gostaria de criar ou destacar meu perfil na plataforma. Podem me orientar pelo atendimento oficial?",
+      ? `Olá, Laura! Tenho dúvidas ou interesse em me cadastrar no site Delírio Privê no plano ${plano}. Pode me orientar?`
+      : "Olá, Laura! Tenho dúvidas ou interesse em me cadastrar no site Delírio Privê. Pode me orientar?",
   );
-  const waLink = `https://wa.me/${adminWhatsapp}?text=${message}`;
+  const lauraWaLink = `https://wa.me/${lauraWhatsapp}?text=${message}`;
 
   return (
     <div className="entry-page cadastro-page">
@@ -43,14 +41,16 @@ function CadastroWhatsappContent() {
               intermediador ou representante das anunciantes.
             </p>
             <div className="cadastro-actions">
-              <a className="button button--primary" href={waLink} target="_blank" rel="noreferrer">
-                Falar pelo WhatsApp oficial
+              <a className="button button--primary" href={lauraWaLink} target="_blank" rel="noreferrer">
+                Consultora Laura
               </a>
+              <button className="button button--ghost is-disabled" type="button" disabled title="Aguardando número oficial">
+                Consultor Alexandre
+              </button>
               <Link className="button button--ghost" href="/planos">
                 Ver planos
               </Link>
             </div>
-            <p className="cadastro-note">Canal oficial para anúncios: {displayWhatsapp}</p>
           </div>
 
           <aside className="cadastro-card" aria-label="Como funciona">

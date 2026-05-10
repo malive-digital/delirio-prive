@@ -52,10 +52,9 @@ export default function ParceriasPromocoes() {
       <main className="app-page">
         <div className="page-title">
           <div>
-            <p className="eyebrow">Clube DP</p>
+            <p className="eyebrow">Clube Delírio Privê</p>
             <h1>Parcerias e promoções</h1>
           </div>
-          <p>Benefícios cadastrados pela administração oficial da plataforma.</p>
         </div>
 
         {loading ? (
@@ -90,7 +89,6 @@ export default function ParceriasPromocoes() {
           </section>
         )}
       </main>
-
     </>
   );
 }

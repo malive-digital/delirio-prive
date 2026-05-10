@@ -966,7 +966,7 @@ export default function Dashboard() {
                         <p>{profile.price_15 || profile.price_30 || profile.price_60 || "Não informado"}</p>
                       </article>
                       <article>
-                        <strong>Atende</strong>
+                        <strong>Atendimento</strong>
                         <p>{profile.serves || "Não informado"}</p>
                       </article>
                       <article>
@@ -1134,7 +1134,7 @@ export default function Dashboard() {
                         </select>
                       </label>
                       <label className="input-group">
-                        <span>Atende</span>
+                        <span>Atendimento</span>
                         <input value={profile.serves} onChange={(event) => updateProfileField("serves", event.target.value)} type="text" placeholder={categoryGuide.serves} />
                         <div className="quick-options">
                           {predefinedOptions.serves.map((option) => (

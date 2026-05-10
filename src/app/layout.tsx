@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import "./globals.css";
 import Script from "next/script";
 import { AgeGate } from "@/components/AgeGate";
@@ -72,6 +73,10 @@ export default function RootLayout({
         <footer className="site-footer">
           <span>© 2026 Delírio Privê. Todos os direitos reservados.</span>
           <span>Plataforma independente de divulgação de perfis. Não somos agência, boate ou intermediadores.</span>
+          <nav className="site-footer__links" aria-label="Links legais">
+            <Link href="/termos-de-uso">Termos de uso</Link>
+            <Link href="/politica-de-privacidade">Política de privacidade</Link>
+          </nav>
         </footer>
         <Script src="/script.js?v=20260506-3" strategy="afterInteractive" />
       </body>

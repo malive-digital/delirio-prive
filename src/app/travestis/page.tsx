@@ -6,7 +6,6 @@ export default function TravestisPage() {
       title="Trans"
       type="trans"
       activeHref="/travestis"
-      intro="Perfis trans cadastrados pela administração."
     />
   );
 }

@@ -34,6 +34,16 @@ const routes: MetadataRoute.Sitemap = [
     priority: 0.6,
   },
   {
+    url: `${siteUrl}/termos-de-uso`,
+    changeFrequency: "yearly",
+    priority: 0.3,
+  },
+  {
+    url: `${siteUrl}/politica-de-privacidade`,
+    changeFrequency: "yearly",
+    priority: 0.3,
+  },
+  {
     url: `${siteUrl}/cadastro-whatsapp`,
     changeFrequency: "monthly",
     priority: 0.5,

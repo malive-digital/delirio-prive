@@ -80,6 +80,7 @@ const emptyPartnershipForm = {
 
 const DOCUMENTS_PER_PAGE = 10;
 const PROFILES_PER_PAGE = 10;
+const SUBSCRIPTIONS_PER_PAGE = 10;
 
 const emptyProfileEditForm = {
   name: "",
@@ -145,6 +146,8 @@ export default function AdminDashboard() {
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentPage, setDocumentPage] = useState(1);
   const [profilePage, setProfilePage] = useState(1);
+  const [subscriptionPage, setSubscriptionPage] = useState(1);
+  const [acceptedDocumentIds, setAcceptedDocumentIds] = useState<Set<string>>(new Set());
   const [editingProfileId, setEditingProfileId] = useState("");
   const [profileEditForm, setProfileEditForm] = useState(emptyProfileEditForm);
   const [loading, setLoading] = useState(true);
@@ -297,6 +300,11 @@ export default function AdminDashboard() {
     (documentPage - 1) * DOCUMENTS_PER_PAGE,
     documentPage * DOCUMENTS_PER_PAGE,
   );
+  const subscriptionPageCount = Math.max(1, Math.ceil(subscriptions.length / SUBSCRIPTIONS_PER_PAGE));
+  const visibleSubscriptions = subscriptions.slice(
+    (subscriptionPage - 1) * SUBSCRIPTIONS_PER_PAGE,
+    subscriptionPage * SUBSCRIPTIONS_PER_PAGE,
+  );
   const getProfileSubscription = (profileId: string) => {
     return subscriptions.find((subscription) => subscription.profile_id === profileId || subscription.user_id === profileId) || null;
   };
@@ -312,6 +320,12 @@ export default function AdminDashboard() {
       setProfilePage(profilePageCount);
     }
   }, [profilePage, profilePageCount]);
+
+  useEffect(() => {
+    if (subscriptionPage > subscriptionPageCount) {
+      setSubscriptionPage(subscriptionPageCount);
+    }
+  }, [subscriptionPage, subscriptionPageCount]);
 
   const handlePartnershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -338,11 +352,26 @@ export default function AdminDashboard() {
     await loadPartnerships();
   };
 
-  const togglePartnership = async (item: PartnershipPromotion) => {
-    await supabase
+  const deletePartnership = async (item: PartnershipPromotion) => {
+    const shouldDelete = window.confirm(`Apagar a parceria "${item.title}"? Esta acao nao pode ser desfeita.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setPartnershipStatus("Apagando parceria...");
+
+    const { error } = await supabase
       .from("partnership_promotions")
-      .update({ is_active: !item.is_active, updated_at: new Date().toISOString() })
+      .delete()
       .eq("id", item.id);
+
+    if (error) {
+      setPartnershipStatus(`Erro ao apagar: ${error.message}`);
+      return;
+    }
+
+    setPartnershipStatus("Parceria apagada com sucesso.");
     await loadPartnerships();
   };
 
@@ -352,6 +381,11 @@ export default function AdminDashboard() {
 
     if (status === "approved" && !profile?.user_document_path) {
       setAdminActionMessage("Nao e possivel aprovar: o perfil ainda nao enviou a documentacao em PDF.");
+      return;
+    }
+
+    if (status === "approved" && !acceptedDocumentIds.has(profileId)) {
+      setAdminActionMessage("Aceite o documento antes de aprovar o perfil.");
       return;
     }
 
@@ -377,6 +411,20 @@ export default function AdminDashboard() {
 
     setAdminActionMessage(status === "approved" ? "Perfil aprovado." : "Perfil recusado.");
     await loadProfiles();
+  };
+
+  const acceptProfileDocument = (profile: Profile) => {
+    if (!profile.user_document_path) {
+      setAdminActionMessage("Nao ha documento enviado para aceitar.");
+      return;
+    }
+
+    setAcceptedDocumentIds((current) => {
+      const next = new Set(current);
+      next.add(profile.id);
+      return next;
+    });
+    setAdminActionMessage(`Documento de ${profile.name || "perfil sem nome"} aceito. O perfil continua pendente para aprovacao final.`);
   };
 
   const updateProfileMediaApproval = async (mediaId: string, status: "approved" | "rejected") => {
@@ -430,6 +478,13 @@ export default function AdminDashboard() {
     if (!editingProfileId) return;
 
     setAdminActionMessage("Salvando perfil...");
+    const profile = profiles.find((item) => item.id === editingProfileId);
+
+    if (profileEditForm.profile_approval_status === "approved" && !profile?.user_document_path) {
+      setAdminActionMessage("Nao e possivel aprovar: o perfil ainda nao enviou a documentacao em PDF.");
+      return;
+    }
+
     const selectedPlan = getPlanConfig(profileEditForm.active_plan);
     const planDays = Math.max(1, Math.floor(Number(profileEditForm.plan_days) || 0));
     const periodStart = new Date();
@@ -522,6 +577,13 @@ export default function AdminDashboard() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("hasActivePlan");
+    sessionStorage.removeItem("hasActivePlan");
+    router.push("/login");
+  };
+
   return (
     <div className="entry-page" style={{ overflowX: "hidden" }}>
       <header className="app-header" style={{ borderBottom: "1px solid rgba(212,175,55,0.2)" }}>
@@ -531,8 +593,25 @@ export default function AdminDashboard() {
         </Link>
         <nav className="app-nav" aria-label="Navegação administrativa">
           <Link href="/">Site</Link>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/login">Trocar usuário</Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{
+              minHeight: "2.5rem",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "0.5rem 0.82rem",
+              border: "1px solid transparent",
+              borderRadius: "999px",
+              background: "transparent",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+            }}
+          >
+            Sair
+          </button>
         </nav>
       </header>
 
@@ -544,7 +623,7 @@ export default function AdminDashboard() {
 
         <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", borderBottom: "1px solid rgba(245, 230, 200, 0.1)", paddingBottom: "1rem", overflowX: "auto" }}>
           {[
-            { id: "aprovacoes", label: "Aprovação de Mídia" },
+            { id: "aprovacoes", label: "Aprovações" },
             { id: "documentos", label: "Documentação" },
             { id: "perfis", label: "Gerenciar Perfis" },
             { id: "financeiro", label: "Visão Financeira" },
@@ -584,7 +663,8 @@ export default function AdminDashboard() {
 
               <div style={{ display: "grid", gap: "1.5rem" }}>
                 <section>
-                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Mídias aguardando aceite</h3>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "0.35rem" }}>1. Seção para aceitar foto</h3>
+                  <p style={{ color: "var(--text-secondary)", margin: "0 0 1rem" }}>Aprova ou recusa as fotos e vídeos enviados pelos perfis.</p>
                   {mediaItems.filter((item) => item.approval_status === "pending").length === 0 ? (
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhuma mídia aguardando aceite.</p>
                   ) : (
@@ -632,7 +712,8 @@ export default function AdminDashboard() {
                 </section>
 
                 <section>
-                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Documentos aguardando aceite</h3>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "0.35rem" }}>2. Seção para aceitar documento</h3>
+                  <p style={{ color: "var(--text-secondary)", margin: "0 0 1rem" }}>Aceitar o documento não aprova o perfil; apenas libera o perfil para a etapa de aprovação.</p>
                   {pendingProfileDocuments(profiles).length === 0 ? (
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum documento aguardando aceite.</p>
                   ) : (
@@ -649,8 +730,8 @@ export default function AdminDashboard() {
                             <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
                               Visualizar
                             </button>
-                            <button className="button button--primary" type="button" onClick={() => updateProfileApproval(profile.id, "approved")}>
-                              Aprovar perfil
+                            <button className="button button--primary" type="button" onClick={() => acceptProfileDocument(profile)}>
+                              {acceptedDocumentIds.has(profile.id) ? "Documento aceito" : "Aceitar documento"}
                             </button>
                             <button className="button button--ghost" type="button" onClick={() => updateProfileApproval(profile.id, "rejected")}>
                               Recusar
@@ -663,7 +744,8 @@ export default function AdminDashboard() {
                 </section>
 
                 <section>
-                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "1rem" }}>Perfis aguardando aceite</h3>
+                  <h3 style={{ color: "var(--gold-primary)", marginBottom: "0.35rem" }}>3. Seção de aprovar perfil</h3>
+                  <p style={{ color: "var(--text-secondary)", margin: "0 0 1rem" }}>O perfil só pode ser aprovado depois que o documento estiver ok.</p>
                   {profiles.filter((profile) => profile.profile_approval_status === "pending").length === 0 ? (
                     <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil aguardando aceite.</p>
                   ) : (
@@ -684,7 +766,7 @@ export default function AdminDashboard() {
                       {profile.description && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{profile.description}</p>}
                       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
                         <span style={{ padding: "0.35rem 0.7rem", borderRadius: "999px", background: profile.user_document_path ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", color: profile.user_document_path ? "#4ade80" : "#f87171", fontWeight: 800, fontSize: "0.85rem" }}>
-                          {profile.user_document_path ? "Documentacao enviada" : "Sem documentacao"}
+                          {acceptedDocumentIds.has(profile.id) ? "Documento ok" : profile.user_document_path ? "Documento enviado" : "Sem documento"}
                         </span>
                         {profile.user_document_name && (
                           <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{profile.user_document_name}</span>
@@ -699,8 +781,8 @@ export default function AdminDashboard() {
                         <button
                           className="button button--primary"
                           type="button"
-                          disabled={!profile.user_document_path}
-                          title={!profile.user_document_path ? "Envio de documentacao obrigatorio para aprovar" : undefined}
+                          disabled={!acceptedDocumentIds.has(profile.id)}
+                          title={!profile.user_document_path ? "Envio de documentacao obrigatorio para aprovar" : !acceptedDocumentIds.has(profile.id) ? "Aceite o documento antes de aprovar" : undefined}
                           onClick={() => updateProfileApproval(profile.id, "approved")}
                         >
                           Aprovar
@@ -906,12 +988,13 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {subscriptions.map((subscription, index) => {
+                    {visibleSubscriptions.map((subscription, index) => {
                       const daysLeft = getSubscriptionDaysLeft(subscription);
                       const endDate = getSubscriptionEndDate(subscription);
+                      const absoluteIndex = (subscriptionPage - 1) * SUBSCRIPTIONS_PER_PAGE + index;
 
                       return (
-                        <tr key={subscription.id || `${subscription.user_id}-${index}`} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
+                        <tr key={subscription.id || `${subscription.user_id}-${absoluteIndex}`} style={{ borderBottom: "1px solid rgba(245,230,200,0.05)", color: "white" }}>
                           <td style={{ padding: "1rem" }}>{getPlanConfig(subscription.plan || subscription.plan_key || "Basico").displayName}</td>
                           <td style={{ padding: "1rem" }}>{subscription.status || "Sem status"}</td>
                           <td style={{ padding: "1rem", color: daysLeft === 0 ? "#f87171" : "var(--text-secondary)" }}>
@@ -923,6 +1006,15 @@ export default function AdminDashboard() {
                     })}
                   </tbody>
                 </table>
+              )}
+              {subscriptions.length > SUBSCRIPTIONS_PER_PAGE && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginTop: "1rem" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Página {subscriptionPage} de {subscriptionPageCount}</span>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <button className="button button--ghost" type="button" disabled={subscriptionPage <= 1} onClick={() => setSubscriptionPage((page) => Math.max(1, page - 1))}>Anterior</button>
+                    <button className="button button--ghost" type="button" disabled={subscriptionPage >= subscriptionPageCount} onClick={() => setSubscriptionPage((page) => Math.min(subscriptionPageCount, page + 1))}>Próxima</button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -983,8 +1075,8 @@ export default function AdminDashboard() {
                       <strong style={{ color: "white" }}>{item.title}</strong>
                       <p style={{ margin: "0.25rem 0 0", color: "var(--text-secondary)" }}>{item.partner_name} - {item.is_active ? "Ativa" : "Inativa"}</p>
                     </div>
-                    <button className="button button--ghost" type="button" onClick={() => togglePartnership(item)}>
-                      {item.is_active ? "Desativar" : "Ativar"}
+                    <button className="button button--ghost" type="button" onClick={() => deletePartnership(item)}>
+                      Apagar
                     </button>
                   </div>
                 ))}
