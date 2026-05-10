@@ -43,10 +43,10 @@ function CadastroWhatsappContent() {
               intermediador ou representante das anunciantes.
             </p>
             <div className="cadastro-actions">
-              <a className="button button--primary" href={lauraWaLink} target="_blank" rel="noreferrer">
+              <a className="button button--primary" href={lauraWaLink} target="_blank" rel="noreferrer" data-whatsapp-direct>
                 Consultora Laura
               </a>
-              <a className="button button--primary" href={alexandreWaLink} target="_blank" rel="noreferrer">
+              <a className="button button--primary" href={alexandreWaLink} target="_blank" rel="noreferrer" data-whatsapp-direct>
                 Consultor Alexandre
               </a>
               <Link className="button button--ghost" href="/planos">

@@ -566,6 +566,10 @@ document.addEventListener('dragstart', (e) => {
 
 // 2. Ocultar e Proteger WhatsApp
 document.querySelectorAll('a[href^="https://wa.me"]').forEach(link => {
+  if (link.hasAttribute('data-whatsapp-direct')) {
+    return;
+  }
+
   const originalHref = link.href;
   const isMobileContact = link.classList.contains('mobile-contact');
   
