@@ -742,15 +742,16 @@ export default function Dashboard() {
           profile_verified: false,
           profile_approval_status: "pending",
           updated_at: new Date().toISOString(),
+          ...(profile.user_document_path ? {} : { document_uploaded_at: null }),
         }
       : {
           user_document_path: null,
           user_document_name: null,
           user_document_mime: null,
-          document_uploaded_at: profile.user_document_back_path ? profile.document_uploaded_at : null,
           profile_verified: false,
           profile_approval_status: "pending",
           updated_at: new Date().toISOString(),
+          ...(profile.user_document_back_path ? {} : { document_uploaded_at: null }),
         };
 
     const { error: updateError } = await supabase
