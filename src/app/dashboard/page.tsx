@@ -766,14 +766,15 @@ export default function Dashboard() {
     const file = event.target.files?.[0];
     if (!file || !userId) return;
 
-    if (file.type !== "application/pdf") {
-      setStatusMessage("Anexe apenas documento em PDF.");
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      setStatusMessage("Anexe um documento em PDF, JPEG ou PNG.");
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      setStatusMessage("O documento passa de 10MB. Envie um PDF menor.");
+      setStatusMessage("O documento passa de 10MB. Envie um arquivo menor.");
       event.target.value = "";
       return;
     }
@@ -789,9 +790,10 @@ export default function Dashboard() {
       return;
     }
 
-    const documentPath = `${userId}/documento-${Date.now()}.pdf`;
+    const fileExtension = file.name.split('.').pop() || 'pdf';
+    const documentPath = `${userId}/documento-${Date.now()}.${fileExtension}`;
     const { error: uploadError } = await supabase.storage.from("user-documents").upload(documentPath, file, {
-      contentType: "application/pdf",
+      contentType: file.type,
       upsert: true,
     });
 
@@ -915,7 +917,7 @@ export default function Dashboard() {
                 { id: "resumo", label: "Visao Geral" },
                 { id: "editar", label: "Editar Perfil" },
                 { id: "fotos", label: "Fotos" },
-                { id: "documento", label: "Documento PDF" },
+                { id: "documento", label: "Documentos" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1362,16 +1364,16 @@ export default function Dashboard() {
                 <div className="dashboard-stack">
                   <div>
                     <span className="section-kicker">Documento</span>
-                    <h2>Documento em PDF</h2>
+                    <h2>Documento (Foto ou PDF)</h2>
                     <p>{profile.user_document_name || "Nenhum documento anexado."}</p>
                   </div>
 
                   <div className="form-actions">
                     <label className="button button--ghost">
-                      {uploadingDocument ? "Enviando..." : "Anexar PDF"}
+                      {uploadingDocument ? "Enviando..." : "Anexar arquivo"}
                       <input
                         type="file"
-                        accept="application/pdf"
+                        accept="application/pdf,image/jpeg,image/png"
                         onChange={handleDocumentUpload}
                         disabled={uploadingDocument}
                         style={{ display: "none" }}
@@ -1380,12 +1382,12 @@ export default function Dashboard() {
 
                     {documentUrl && (
                       <a className="button button--primary" href={documentUrl} target="_blank" rel="noreferrer">
-                        Visualizar PDF
+                        Visualizar arquivo
                       </a>
                     )}
                     {profile.user_document_path && (
                       <button className="button button--ghost" type="button" onClick={handleDocumentDelete} disabled={uploadingDocument}>
-                        Excluir PDF
+                        Excluir arquivo
                       </button>
                     )}
                   </div>
