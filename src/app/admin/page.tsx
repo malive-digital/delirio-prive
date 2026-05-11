@@ -115,6 +115,7 @@ const emptyProfileEditForm = {
   plan_days: "30",
   is_online: false,
   profile_approval_status: "pending" as "pending" | "approved",
+  new_password: "",
 };
 
 const normalizeProfileMediaRows = (rows: unknown[]): ProfileMedia[] => {
@@ -653,6 +654,7 @@ export default function AdminDashboard() {
       plan_days: daysLeft && daysLeft > 0 ? String(daysLeft) : "30",
       is_online: Boolean(profile.is_online),
       profile_approval_status: profile.profile_approval_status === "approved" ? "approved" : "pending",
+      new_password: "",
     });
   };
 
@@ -696,6 +698,19 @@ export default function AdminDashboard() {
     if (error) {
       setAdminActionMessage(`Erro ao salvar perfil: ${error.message}`);
       return;
+    }
+
+    if (profileEditForm.new_password) {
+      const { error: passwordError } = await supabase.rpc('admin_update_user_password', {
+        target_user_id: editingProfileId,
+        new_password: profileEditForm.new_password
+      });
+
+      if (passwordError) {
+        setAdminActionMessage(`Perfil salvo, mas erro ao atualizar senha: ${passwordError.message}`);
+        await loadProfiles();
+        return;
+      }
     }
 
     const subscriptionPayload = {
@@ -1119,6 +1134,7 @@ export default function AdminDashboard() {
                             <label className="input-group"><span>Plano</span><select value={profileEditForm.active_plan} onChange={(event) => setProfileEditForm({ ...profileEditForm, active_plan: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}>{PLAN_LIST.map((plan) => <option key={plan.key} value={plan.key}>{plan.displayName}</option>)}</select></label>
                             <label className="input-group"><span>Dias do plano</span><input type="number" min="1" max="365" value={profileEditForm.plan_days} onChange={(event) => setProfileEditForm({ ...profileEditForm, plan_days: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
                             <label className="input-group"><span>Status</span><select value={profileEditForm.profile_approval_status} onChange={(event) => setProfileEditForm({ ...profileEditForm, profile_approval_status: event.target.value as "pending" | "approved" })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }}><option value="pending">Aguardando aprovação</option><option value="approved">Aprovado</option></select></label>
+                            <label className="input-group"><span>Nova Senha (Opcional)</span><input type="password" placeholder="Deixe em branco para não alterar" value={profileEditForm.new_password} onChange={(event) => setProfileEditForm({ ...profileEditForm, new_password: event.target.value })} style={{ width: "100%", padding: "0.9rem", borderRadius: "0.5rem", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(245,230,200,0.12)", color: "white" }} /></label>
                             <label style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", color: "var(--text-secondary)" }}><input type="checkbox" checked={profileEditForm.is_online} onChange={(event) => setProfileEditForm({ ...profileEditForm, is_online: event.target.checked })} />Online</label>
                           </div>
                           <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
