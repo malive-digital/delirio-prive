@@ -927,14 +927,28 @@ export default function AdminDashboard() {
                         <article className="admin-list-item" key={profile.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "center", padding: "0.85rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                           <div>
                             <strong style={{ color: "white" }}>{profile.name || "Perfil sem nome"}</strong>
-                            <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
-                              {profile.user_document_name || "Documento PDF enviado"}
-                            </p>
+                            {profile.user_document_path && (
+                              <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
+                                Frente: {profile.user_document_name || "Documento PDF enviado"}
+                              </p>
+                            )}
+                            {profile.user_document_back_path && (
+                              <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
+                                Verso: {profile.user_document_back_name || "Documento enviado"}
+                              </p>
+                            )}
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                            <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
-                              Visualizar
-                            </button>
+                            {profile.user_document_path && (
+                              <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
+                                Ver Frente
+                              </button>
+                            )}
+                            {profile.user_document_back_path && (
+                              <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_back_path)}>
+                                Ver Verso
+                              </button>
+                            )}
                             <button className="button button--primary" type="button" onClick={() => acceptProfileDocument(profile)}>
                               {acceptedDocumentIds.has(profile.id) ? "Documento aceito" : "Aceitar documento"}
                             </button>
@@ -970,24 +984,32 @@ export default function AdminDashboard() {
                       </div>
                       {profile.description && <p style={{ color: "var(--text-secondary)", margin: 0 }}>{profile.description}</p>}
                       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-                        <span style={{ padding: "0.35rem 0.7rem", borderRadius: "999px", background: profile.user_document_path ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", color: profile.user_document_path ? "#4ade80" : "#f87171", fontWeight: 800, fontSize: "0.85rem" }}>
-                          {acceptedDocumentIds.has(profile.id) ? "Documento ok" : profile.user_document_path ? "Documento enviado" : "Sem documento"}
+                        <span style={{ padding: "0.35rem 0.7rem", borderRadius: "999px", background: (profile.user_document_path || profile.user_document_back_path) ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)", color: (profile.user_document_path || profile.user_document_back_path) ? "#4ade80" : "#f87171", fontWeight: 800, fontSize: "0.85rem" }}>
+                          {acceptedDocumentIds.has(profile.id) ? "Documento ok" : (profile.user_document_path || profile.user_document_back_path) ? "Documento enviado" : "Sem documento"}
                         </span>
                         {profile.user_document_name && (
                           <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{profile.user_document_name}</span>
+                        )}
+                        {profile.user_document_back_name && (
+                          <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}> | {profile.user_document_back_name}</span>
                         )}
                       </div>
                       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
                         {profile.user_document_path && (
                           <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_path)}>
-                            Ver PDF
+                            Ver Frente
+                          </button>
+                        )}
+                        {profile.user_document_back_path && (
+                          <button className="button button--ghost" type="button" onClick={() => viewUserDocument(profile.user_document_back_path)}>
+                            Ver Verso
                           </button>
                         )}
                         <button
                           className="button button--primary"
                           type="button"
                           disabled={!acceptedDocumentIds.has(profile.id)}
-                          title={!profile.user_document_path ? "Envio de documentacao obrigatorio para aprovar" : !acceptedDocumentIds.has(profile.id) ? "Aceite o documento antes de aprovar" : undefined}
+                          title={!(profile.user_document_path || profile.user_document_back_path) ? "Envio de documentacao obrigatorio para aprovar" : !acceptedDocumentIds.has(profile.id) ? "Aceite o documento antes de aprovar" : undefined}
                           onClick={() => updateProfileApproval(profile.id, "approved")}
                         >
                           Aprovar
