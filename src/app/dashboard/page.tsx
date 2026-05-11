@@ -51,9 +51,11 @@ type ProfileForm = {
   profile_approval_status: ApprovalStatus;
   user_document_path: string | null;
   user_document_name: string | null;
+  user_document_back_path: string | null;
+  user_document_back_name: string | null;
 };
 
-const profileTextFields: Array<keyof Omit<ProfileForm, "is_online" | "profile_approval_status" | "user_document_path" | "user_document_name">> = [
+const profileTextFields: Array<keyof Omit<ProfileForm, "is_online" | "profile_approval_status" | "user_document_path" | "user_document_name" | "user_document_back_path" | "user_document_back_name">> = [
   "name",
   "type",
   "whatsapp",
@@ -120,6 +122,8 @@ const emptyProfile: ProfileForm = {
   profile_approval_status: "pending",
   user_document_path: null,
   user_document_name: null,
+  user_document_back_path: null,
+  user_document_back_name: null,
 };
 
 const approvalCopy = {
@@ -212,6 +216,8 @@ function normalizeProfileForm(profileData: ProfileRow): ProfileForm {
       : emptyProfile.profile_approval_status,
     user_document_path: typeof profileData.user_document_path === "string" ? profileData.user_document_path : null,
     user_document_name: typeof profileData.user_document_name === "string" ? profileData.user_document_name : null,
+    user_document_back_path: typeof profileData.user_document_back_path === "string" ? profileData.user_document_back_path : null,
+    user_document_back_name: typeof profileData.user_document_back_name === "string" ? profileData.user_document_back_name : null,
   };
 
   profileTextFields.forEach((field) => {
@@ -233,6 +239,7 @@ export default function Dashboard() {
   const [deletingMediaId, setDeletingMediaId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
+  const [documentBackUrl, setDocumentBackUrl] = useState("");
   const [confirmAction, setConfirmAction] = useState<null | { title: string; description: string; confirmLabel: string; onConfirm: () => void }>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
@@ -287,14 +294,16 @@ export default function Dashboard() {
     router.push("/login");
   };
 
-  const loadDocumentUrl = async (path: string | null) => {
+  const loadDocumentUrl = async (path: string | null, isBack: boolean = false) => {
     if (!path) {
-      setDocumentUrl("");
+      if (isBack) setDocumentBackUrl("");
+      else setDocumentUrl("");
       return;
     }
 
     const { data } = await supabase.storage.from("user-documents").createSignedUrl(path, 60 * 10);
-    setDocumentUrl(data?.signedUrl || "");
+    if (isBack) setDocumentBackUrl(data?.signedUrl || "");
+    else setDocumentUrl(data?.signedUrl || "");
   };
 
   const loadProfileMedia = async (profileId: string) => {
@@ -326,7 +335,7 @@ export default function Dashboard() {
       const { data: profileData } = await supabase
         .from("profiles")
         .select(
-          "name,type,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name",
+          "name,type,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_approval_status,user_document_path,user_document_name,user_document_back_path,user_document_back_name",
         )
         .eq("id", user.id)
         .maybeSingle();
@@ -386,7 +395,8 @@ export default function Dashboard() {
         if (savedPlan && !storedPlan) {
           planStorage.setItem("hasActivePlan", savedPlan);
         }
-        await loadDocumentUrl(loadedProfile.user_document_path);
+        await loadDocumentUrl(loadedProfile.user_document_path, false);
+        await loadDocumentUrl(loadedProfile.user_document_back_path, true);
       }
 
       await loadProfileMedia(user.id);
@@ -710,30 +720,42 @@ export default function Dashboard() {
     });
   };
 
-  const deleteDocument = async () => {
-    if (!userId || !profile.user_document_path) return;
+  const deleteDocument = async (isBack: boolean = false) => {
+    const path = isBack ? profile.user_document_back_path : profile.user_document_path;
+    if (!userId || !path) return;
 
     setUploadingDocument(true);
-    setStatusMessage("Excluindo documento...");
+    setStatusMessage(`Excluindo ${isBack ? "verso" : "frente"} do documento...`);
 
-    const { error: storageError } = await supabase.storage.from("user-documents").remove([profile.user_document_path]);
+    const { error: storageError } = await supabase.storage.from("user-documents").remove([path]);
     if (storageError) {
       setUploadingDocument(false);
       setStatusMessage(`Erro ao excluir documento: ${storageError.message}`);
       return;
     }
 
+    const updates = isBack
+      ? {
+          user_document_back_path: null,
+          user_document_back_name: null,
+          user_document_back_mime: null,
+          profile_verified: false,
+          profile_approval_status: "pending",
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          user_document_path: null,
+          user_document_name: null,
+          user_document_mime: null,
+          document_uploaded_at: profile.user_document_back_path ? profile.document_uploaded_at : null,
+          profile_verified: false,
+          profile_approval_status: "pending",
+          updated_at: new Date().toISOString(),
+        };
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
-        user_document_path: null,
-        user_document_name: null,
-        user_document_mime: null,
-        document_uploaded_at: null,
-        profile_verified: false,
-        profile_approval_status: "pending",
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", userId);
 
     setUploadingDocument(false);
@@ -745,30 +767,33 @@ export default function Dashboard() {
 
     setProfile((current) => ({
       ...current,
-      user_document_path: null,
-      user_document_name: null,
+      ...(isBack ? { user_document_back_path: null, user_document_back_name: null } : { user_document_path: null, user_document_name: null }),
       profile_approval_status: "pending",
     }));
-    setDocumentUrl("");
-    setStatusMessage("Documento excluído do perfil.");
+
+    if (isBack) setDocumentBackUrl("");
+    else setDocumentUrl("");
+
+    setStatusMessage(`Documento (${isBack ? "verso" : "frente"}) excluído do perfil.`);
   };
 
-  const handleDocumentDelete = () => {
+  const handleDocumentDelete = (isBack: boolean = false) => {
+    const name = isBack ? profile.user_document_back_name : profile.user_document_name;
     setConfirmAction({
-      title: "Excluir documento",
-      description: `Tem certeza que deseja excluir ${profile.user_document_name || "o documento anexado"}? O perfil voltará para análise.`,
+      title: `Excluir ${isBack ? "verso" : "frente"} do documento`,
+      description: `Tem certeza que deseja excluir ${name || "o documento anexado"}? O perfil voltará para análise.`,
       confirmLabel: "Excluir documento",
-      onConfirm: deleteDocument,
+      onConfirm: () => deleteDocument(isBack),
     });
   };
 
-  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>, isBack: boolean = false) => {
     const file = event.target.files?.[0];
     if (!file || !userId) return;
 
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      setStatusMessage("Anexe um documento em PDF, JPEG ou PNG.");
+      setStatusMessage("Anexe um documento em PDF, JPEG, PNG ou WEBP.");
       event.target.value = "";
       return;
     }
@@ -804,11 +829,21 @@ export default function Dashboard() {
       return;
     }
 
+    const updates = isBack
+      ? {
+          user_document_back_path: documentPath,
+          user_document_back_name: file.name,
+          user_document_back_mime: file.type,
+        }
+      : {
+          user_document_path: documentPath,
+          user_document_name: file.name,
+          user_document_mime: file.type,
+        };
+
     const { error: updateError } = await supabase.from("profiles").upsert({
       ...buildProfilePayload(),
-      user_document_path: documentPath,
-      user_document_name: file.name,
-      user_document_mime: file.type,
+      ...updates,
       document_uploaded_at: new Date().toISOString(),
       profile_verified: false,
       profile_approval_status: "pending",
@@ -825,12 +860,11 @@ export default function Dashboard() {
 
     setProfile((current) => ({
       ...current,
-      user_document_path: documentPath,
-      user_document_name: file.name,
+      ...updates,
       profile_approval_status: "pending",
     }));
-    await loadDocumentUrl(documentPath);
-    setStatusMessage("Documento anexado e enviado para análise.");
+    await loadDocumentUrl(documentPath, isBack);
+    setStatusMessage(`Documento (${isBack ? "verso" : "frente"}) anexado e enviado para análise.`);
   };
 
   return (
@@ -1363,33 +1397,73 @@ export default function Dashboard() {
               {activeTab === "documento" && (
                 <div className="dashboard-stack">
                   <div>
-                    <span className="section-kicker">Documento</span>
-                    <h2>Documento (Foto ou PDF)</h2>
-                    <p>{profile.user_document_name || "Nenhum documento anexado."}</p>
+                    <span className="section-kicker">Documentos</span>
+                    <h2>Documento para Aprovação</h2>
+                    <p>Envie foto da frente e verso do seu RG ou CNH, ou um arquivo PDF com as duas partes. Necessário para aprovação do perfil.</p>
                   </div>
 
-                  <div className="form-actions">
-                    <label className="button button--ghost">
-                      {uploadingDocument ? "Enviando..." : "Anexar arquivo"}
-                      <input
-                        type="file"
-                        accept="application/pdf,image/jpeg,image/png"
-                        onChange={handleDocumentUpload}
-                        disabled={uploadingDocument}
-                        style={{ display: "none" }}
-                      />
-                    </label>
+                  <div className="dashboard-form-grid" style={{ gap: "2rem" }}>
+                    <div className="document-upload-box" style={{ padding: "1.5rem", border: "1px solid rgba(245, 230, 200, 0.1)", borderRadius: "0.5rem" }}>
+                      <h3>Frente (ou PDF Completo)</h3>
+                      <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                        {profile.user_document_name || "Nenhum arquivo anexado."}
+                      </p>
 
-                    {documentUrl && (
-                      <a className="button button--primary" href={documentUrl} target="_blank" rel="noreferrer">
-                        Visualizar arquivo
-                      </a>
-                    )}
-                    {profile.user_document_path && (
-                      <button className="button button--ghost" type="button" onClick={handleDocumentDelete} disabled={uploadingDocument}>
-                        Excluir arquivo
-                      </button>
-                    )}
+                      <div className="form-actions" style={{ justifyContent: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <label className="button button--ghost button--small">
+                          {uploadingDocument ? "Enviando..." : "Anexar frente"}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(e) => handleDocumentUpload(e, false)}
+                            disabled={uploadingDocument}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+
+                        {documentUrl && (
+                          <a className="button button--primary button--small" href={documentUrl} target="_blank" rel="noreferrer">
+                            Visualizar
+                          </a>
+                        )}
+                        {profile.user_document_path && (
+                          <button className="button button--ghost button--small" type="button" onClick={() => handleDocumentDelete(false)} disabled={uploadingDocument}>
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="document-upload-box" style={{ padding: "1.5rem", border: "1px solid rgba(245, 230, 200, 0.1)", borderRadius: "0.5rem" }}>
+                      <h3>Verso (Opcional)</h3>
+                      <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                        {profile.user_document_back_name || "Nenhum arquivo anexado."}
+                      </p>
+
+                      <div className="form-actions" style={{ justifyContent: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <label className="button button--ghost button--small">
+                          {uploadingDocument ? "Enviando..." : "Anexar verso"}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(e) => handleDocumentUpload(e, true)}
+                            disabled={uploadingDocument}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+
+                        {documentBackUrl && (
+                          <a className="button button--primary button--small" href={documentBackUrl} target="_blank" rel="noreferrer">
+                            Visualizar
+                          </a>
+                        )}
+                        {profile.user_document_back_path && (
+                          <button className="button button--ghost button--small" type="button" onClick={() => handleDocumentDelete(true)} disabled={uploadingDocument}>
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {statusMessage && <p className="status-message" aria-live="polite">{statusMessage}</p>}

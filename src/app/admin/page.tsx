@@ -20,6 +20,8 @@ type Profile = {
   profile_approval_status: "pending" | "approved" | "rejected" | null;
   user_document_path: string | null;
   user_document_name: string | null;
+  user_document_back_path: string | null;
+  user_document_back_name: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -148,11 +150,11 @@ const formatDateTimeSP = (value?: string | null) => {
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
 
 const pendingProfileDocuments = (profiles: Profile[]) => {
-  return profiles.filter((profile) => profile.profile_approval_status === "pending" && profile.user_document_path);
+  return profiles.filter((profile) => profile.profile_approval_status === "pending" && (profile.user_document_path || profile.user_document_back_path));
 };
 
 const allProfileDocuments = (profiles: Profile[]) => {
-  return profiles.filter((profile) => profile.user_document_path);
+  return profiles.filter((profile) => profile.user_document_path || profile.user_document_back_path);
 };
 
 const getPlanAmount = (price: string) => {
@@ -213,7 +215,7 @@ export default function AdminDashboard() {
   const loadProfiles = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
+      .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,user_document_back_path,user_document_back_name,created_at,updated_at")
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -281,7 +283,7 @@ export default function AdminDashboard() {
       const [profilesResult, subscriptionsResult, mediaResult, contactsResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,created_at,updated_at")
+          .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,user_document_back_path,user_document_back_name,created_at,updated_at")
           .order("updated_at", { ascending: false }),
         supabase.from("subscriptions").select("*"),
         supabase
@@ -1038,17 +1040,37 @@ export default function AdminDashboard() {
                         <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>
                           {profile.type || "Categoria nao informada"} - {profile.location || "Localizacao nao informada"}
                         </p>
-                        <p style={{ color: "#4ade80", margin: "0.35rem 0 0", fontWeight: 800 }}>
-                          {profile.user_document_name || "Documento enviado"}
-                        </p>
+                        {profile.user_document_path && (
+                          <p style={{ color: "#4ade80", margin: "0.35rem 0 0", fontWeight: 800 }}>
+                            Frente: {profile.user_document_name || "Documento enviado"}
+                          </p>
+                        )}
+                        {profile.user_document_back_path && (
+                          <p style={{ color: "#4ade80", margin: "0.35rem 0 0", fontWeight: 800 }}>
+                            Verso: {profile.user_document_back_name || "Documento enviado"}
+                          </p>
+                        )}
                       </div>
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => viewUserDocument(profile.user_document_path)}
-                      >
-                        Visualizar
-                      </button>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        {profile.user_document_path && (
+                          <button
+                            className="button button--ghost"
+                            type="button"
+                            onClick={() => viewUserDocument(profile.user_document_path)}
+                          >
+                            Ver Frente
+                          </button>
+                        )}
+                        {profile.user_document_back_path && (
+                          <button
+                            className="button button--ghost"
+                            type="button"
+                            onClick={() => viewUserDocument(profile.user_document_back_path)}
+                          >
+                            Ver Verso
+                          </button>
+                        )}
+                      </div>
                     </article>
                   ))}
 
