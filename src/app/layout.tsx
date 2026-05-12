@@ -11,9 +11,7 @@ export const metadata: Metadata = {
     template: "%s | Delírio Privê",
   },
   description: "Conheça o Delírio Privê, uma plataforma exclusiva para encontrar acompanhantes de luxo com perfis verificados, fotos, informações completas e atendimento discreto.",
-  alternates: {
-    canonical: "/",
-  },
+
   openGraph: {
     title: "Delírio Privê",
     description: "Plataforma exclusiva de acompanhantes de luxo com perfis completos e atendimento discreto.",
