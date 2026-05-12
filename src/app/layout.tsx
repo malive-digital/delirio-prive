@@ -42,6 +42,15 @@ export const metadata: Metadata = {
       follow: true,
     },
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [
+      { url: '/favicon.png', type: 'image/png', sizes: '180x180' },
+    ]
+  },
 };
 
 export const viewport: Viewport = {
