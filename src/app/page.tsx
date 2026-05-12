@@ -69,6 +69,7 @@ export default function Home() {
           <a href="/">Início</a>
           <a href="/planos">Planos</a>
           <a href="/parcerias-promocoes">Parcerias</a>
+          <a href="/diario-trade">Diário Trade</a>
           <AuthNavLink />
         </nav>
       </header>

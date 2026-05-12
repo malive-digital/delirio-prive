@@ -861,7 +861,7 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Fila de Aceite</h2>
                 <span style={{ padding: "0.4rem 1rem", background: "rgba(234,179,8,0.1)", color: "#eab308", borderRadius: "999px", fontWeight: "bold", fontSize: "0.9rem" }}>
-                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length + mediaItems.filter((item) => item.approval_status === "pending").length} pendente(s)
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending" && (profile.user_document_path || profile.user_document_back_path)).length + mediaItems.filter((item) => item.approval_status === "pending").length} pendente(s)
                 </span>
               </div>
               {adminActionMessage && <p style={{ color: "var(--text-secondary)" }}>{adminActionMessage}</p>}
@@ -965,11 +965,11 @@ export default function AdminDashboard() {
                 <section>
                   <h3 style={{ color: "var(--gold-primary)", marginBottom: "0.35rem" }}>3. Seção de aprovar perfil</h3>
                   <p style={{ color: "var(--text-secondary)", margin: "0 0 1rem" }}>O perfil só pode ser aprovado depois que o documento estiver ok.</p>
-                  {profiles.filter((profile) => profile.profile_approval_status === "pending").length === 0 ? (
-                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil aguardando aceite.</p>
+                  {profiles.filter((profile) => profile.profile_approval_status === "pending" && (profile.user_document_path || profile.user_document_back_path)).length === 0 ? (
+                    <p style={{ color: "var(--text-secondary)", margin: 0 }}>Nenhum perfil com documento aguardando aceite.</p>
                   ) : (
                     <div style={{ display: "grid", gap: "1rem" }}>
-                      {profiles.filter((profile) => profile.profile_approval_status === "pending").map((profile) => (
+                      {profiles.filter((profile) => profile.profile_approval_status === "pending" && (profile.user_document_path || profile.user_document_back_path)).map((profile) => (
                     <article className="admin-list-item" key={profile.id} style={{ display: "grid", gap: "0.85rem", padding: "1rem", border: "1px solid rgba(245,230,200,0.1)", borderRadius: "0.75rem", background: "rgba(18,18,18,0.55)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
                         <div>
