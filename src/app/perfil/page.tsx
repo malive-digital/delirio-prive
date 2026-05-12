@@ -250,7 +250,7 @@ export default function PerfilPage() {
                   </div>
                 </dl>
                 {profile.whatsapp && (
-                  <a className="button button--primary favorite-button--wide" href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                  <a className="button button--primary favorite-button--wide" href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}?text=Olá,%20encontrei%20seu%20contato%20no%20site%20Delírio%20Privê`} target="_blank" rel="noreferrer">
                     Chamar no WhatsApp
                   </a>
                 )}
