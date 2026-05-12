@@ -1785,7 +1785,7 @@ body.is-switching-category .explore {
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 1fr;
   border: 1px solid rgba(245, 230, 200, 0.14);
   border-radius: 1rem;
   overflow: hidden;
@@ -1811,15 +1811,15 @@ body.is-switching-category .explore {
 }
 
 .profile-card--catalog-basic .profile-card__media {
-  aspect-ratio: 1 / 0.7;
+  aspect-ratio: 3 / 4;
 }
 
 .profile-card--catalog-premium .profile-card__media {
-  aspect-ratio: 1 / 0.82;
+  aspect-ratio: 3 / 4;
 }
 
 .profile-card--catalog-top .profile-card__media {
-  aspect-ratio: 1 / 1.04;
+  aspect-ratio: 3 / 4;
 }
 
 .profile-card--catalog-basic .profile-card__body {
@@ -1926,10 +1926,10 @@ body.is-switching-category .explore {
   min-height: 0;
   aspect-ratio: 3 / 4;
   background:
-    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)),
+    linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.2)),
     var(--profile-art);
-  background-size: contain, contain;
-  background-position: center, center;
+  background-size: cover;
+  background-position: center top;
   background-repeat: no-repeat;
   transition: transform 380ms ease;
 }
@@ -2011,13 +2011,16 @@ body.is-switching-category .explore {
 }
 
 .profile-card__body {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1;
   min-height: 15.7rem;
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.42), rgba(10, 10, 10, 0.92));
+  background: linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.92));
 }
 
 .profile-card__body .tag,
@@ -2026,15 +2029,6 @@ body.is-switching-category .explore {
   width: fit-content;
   display: inline-flex;
   margin-bottom: 0.7rem;
-}
-
-.profile-card--basic .profile-card__body {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 1.7rem 0.65rem 0.65rem;
-  background: linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.94) 62%);
 }
 
 .profile-card__body h2,
@@ -2047,7 +2041,6 @@ body.is-switching-category .explore {
   -webkit-line-clamp: 1;
   overflow: hidden;
 }
-
 .profile-card--premium .profile-card__body h2,
 .profile-card--basic .profile-card__body h2 {
   font-size: 1.2rem;
