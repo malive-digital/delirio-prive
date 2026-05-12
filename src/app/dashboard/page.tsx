@@ -384,6 +384,7 @@ export default function Dashboard() {
       }
 
       if (!hasDashboardAccess) {
+        await supabase.rpc("sync_expired_profile_publication", { target_profile_id: user.id });
         router.push("/cobranca");
         return;
       }

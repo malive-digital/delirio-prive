@@ -125,6 +125,7 @@ export default function Login() {
       router.push("/dashboard");
     } else {
       // Trial expirado — precisa escolher um plano
+      await supabase.rpc("sync_expired_profile_publication", { target_profile_id: userId });
       localStorage.removeItem("hasActivePlan");
       sessionStorage.removeItem("hasActivePlan");
       router.push("/cobranca");

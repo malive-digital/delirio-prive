@@ -78,10 +78,9 @@ export default function PerfilPage() {
       }
 
       const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
+        .from("published_profiles")
         .select("id,type,name,whatsapp,location,state_uf,headline,age,neighborhood,price_15,price_30,price_60,overnight_price,serves,has_place,availability,payment_methods,services,specialties,restrictions,appearance,languages,description,active_plan,is_online,profile_verified")
         .eq("id", profileId)
-        .eq("profile_approval_status", "approved")
         .maybeSingle();
 
       if (profileError || !profileData) {
