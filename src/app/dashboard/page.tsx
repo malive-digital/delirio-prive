@@ -94,11 +94,6 @@ type ProfileMedia = {
 
 type ProfileRow = Partial<Record<keyof ProfileForm, unknown>>;
 
-type ProfileAnalytics = {
-  profile_views: number;
-  whatsapp_clicks: number;
-};
-
 const emptyProfile: ProfileForm = {
   name: "",
   type: "mulher",
@@ -251,10 +246,6 @@ export default function Dashboard() {
   const [subscriptionDaysLeft, setSubscriptionDaysLeft] = useState<number | null>(null);
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
-  const [profileAnalytics, setProfileAnalytics] = useState<ProfileAnalytics>({
-    profile_views: 0,
-    whatsapp_clicks: 0,
-  });
 
   const currentPlan = getPlanConfig(profile.active_plan || (isTrial ? "Basico" : "Top Prive"));
   const categoryGuide = categoryGuides[profile.type as keyof typeof categoryGuides] || categoryGuides.mulher;
@@ -356,19 +347,6 @@ export default function Dashboard() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      const { data: analyticsData } = await supabase
-        .from("profile_analytics")
-        .select("profile_views,whatsapp_clicks")
-        .eq("profile_id", user.id)
-        .maybeSingle();
-
-      if (analyticsData) {
-        setProfileAnalytics({
-          profile_views: Number(analyticsData.profile_views) || 0,
-          whatsapp_clicks: Number(analyticsData.whatsapp_clicks) || 0,
-        });
-      }
 
       const storedPlan = localStorage.getItem("hasActivePlan") || sessionStorage.getItem("hasActivePlan");
       const planStorage = localStorage.getItem("delirioSessionPersistence") === "session" ? sessionStorage : localStorage;
@@ -969,17 +947,6 @@ export default function Dashboard() {
                 </button>
               </article>
 
-              <article className="dashboard-card dashboard-card--metric">
-                <span className="section-kicker">Aberturas</span>
-                <h2>{profileAnalytics.profile_views.toLocaleString("pt-BR")}</h2>
-                <p>Visualizações do seu anúncio.</p>
-              </article>
-
-              <article className="dashboard-card dashboard-card--metric">
-                <span className="section-kicker">WhatsApp</span>
-                <h2>{profileAnalytics.whatsapp_clicks.toLocaleString("pt-BR")}</h2>
-                <p>Cliques no botão de contato.</p>
-              </article>
             </section>
 
             <div className="dashboard-tabs" role="tablist" aria-label="Secoes do dashboard">
