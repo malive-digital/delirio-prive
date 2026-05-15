@@ -3253,7 +3253,7 @@ body.is-switching-category .explore {
 
 .dashboard-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -3274,6 +3274,28 @@ body.is-switching-category .explore {
   align-content: start;
   gap: 0.55rem;
   padding: 1.2rem;
+}
+
+.dashboard-card--main {
+  grid-column: span 2;
+}
+
+.dashboard-card--metric {
+  grid-column: span 3;
+  min-height: 8.2rem;
+  align-content: center;
+  background:
+    linear-gradient(145deg, rgba(212, 175, 55, 0.12), transparent 46%),
+    rgba(10, 10, 10, 0.64);
+}
+
+.dashboard-card--metric h2 {
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 0.95;
+}
+
+.dashboard-card--metric p {
+  margin: 0;
 }
 
 .dashboard-card h2,

@@ -86,6 +86,12 @@ type AdminContact = {
   updated_at: string | null;
 };
 
+type ProfileAnalytics = {
+  profile_id: string;
+  profile_views: number;
+  whatsapp_clicks: number;
+};
+
 const emptyPartnershipForm = {
   title: "",
   partner_name: "",
@@ -170,6 +176,7 @@ export default function AdminDashboard() {
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [contacts, setContacts] = useState<AdminContact[]>([]);
+  const [profileAnalyticsById, setProfileAnalyticsById] = useState<Record<string, ProfileAnalytics>>({});
   const [contactForm, setContactForm] = useState(emptyContactForm);
   const [contactStatus, setContactStatus] = useState("");
   const [contactPage, setContactPage] = useState(1);
@@ -247,6 +254,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadProfileAnalytics = async () => {
+    const { data, error } = await supabase
+      .from("profile_analytics")
+      .select("profile_id,profile_views,whatsapp_clicks");
+
+    if (!error) {
+      setProfileAnalyticsById(
+        (data || []).reduce<Record<string, ProfileAnalytics>>((acc, item) => {
+          acc[item.profile_id] = {
+            profile_id: item.profile_id,
+            profile_views: Number(item.profile_views) || 0,
+            whatsapp_clicks: Number(item.whatsapp_clicks) || 0,
+          };
+          return acc;
+        }, {}),
+      );
+    }
+  };
+
   useEffect(() => {
     const loadAdminData = async () => {
       const {
@@ -280,7 +306,7 @@ export default function AdminDashboard() {
 
       setCurrentAdmin({ id: user.id, name: adminName, email: user.email || null });
 
-      const [profilesResult, subscriptionsResult, mediaResult, contactsResult] = await Promise.all([
+      const [profilesResult, subscriptionsResult, mediaResult, contactsResult, analyticsResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("id,type,name,whatsapp,location,description,active_plan,is_online,profile_verified,profile_approval_status,user_document_path,user_document_name,user_document_back_path,user_document_back_name,created_at,updated_at")
@@ -295,6 +321,9 @@ export default function AdminDashboard() {
           .from("admin_contacts")
           .select("id,name,phone,phone_normalized,sale_closed,admin_user_id,admin_name,admin_email,sale_closed_at,sale_closed_by_admin_user_id,sale_closed_by_admin_name,sale_closed_by_admin_email,created_at,updated_at")
           .order("created_at", { ascending: false }),
+        supabase
+          .from("profile_analytics")
+          .select("profile_id,profile_views,whatsapp_clicks"),
       ]);
 
       if (profilesResult.error) {
@@ -316,6 +345,19 @@ export default function AdminDashboard() {
         setContactStatus(`Nao foi possivel carregar contatos: ${contactsResult.error.message}`);
       } else {
         setContacts(contactsResult.data || []);
+      }
+
+      if (!analyticsResult.error) {
+        setProfileAnalyticsById(
+          (analyticsResult.data || []).reduce<Record<string, ProfileAnalytics>>((acc, item) => {
+            acc[item.profile_id] = {
+              profile_id: item.profile_id,
+              profile_views: Number(item.profile_views) || 0,
+              whatsapp_clicks: Number(item.whatsapp_clicks) || 0,
+            };
+            return acc;
+          }, {}),
+        );
       }
 
       await loadPartnerships();
@@ -744,7 +786,7 @@ export default function AdminDashboard() {
 
     setAdminActionMessage("Perfil atualizado.");
     cancelProfileEdit();
-    await Promise.all([loadProfiles(), loadSubscriptions()]);
+    await Promise.all([loadProfiles(), loadSubscriptions(), loadProfileAnalytics()]);
   };
 
   const deleteProfile = async (profile: Profile) => {
@@ -766,7 +808,7 @@ export default function AdminDashboard() {
     }
 
     setAdminActionMessage("Perfil excluído.");
-    await Promise.all([loadProfiles(), loadProfileMedia()]);
+    await Promise.all([loadProfiles(), loadProfileMedia(), loadProfileAnalytics()]);
   };
 
   const viewUserDocument = async (path: string | null) => {
@@ -1143,9 +1185,14 @@ export default function AdminDashboard() {
                         const subscription = getProfileSubscription(profile.id);
                         const daysLeft = getSubscriptionDaysLeft(subscription);
                         const endDate = getSubscriptionEndDate(subscription);
+                        const analytics = profileAnalyticsById[profile.id] || {
+                          profile_id: profile.id,
+                          profile_views: 0,
+                          whatsapp_clicks: 0,
+                        };
 
                         return (
-                      <div className="admin-profile-row" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(8rem, 0.7fr) minmax(8rem, 0.7fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
+                      <div className="admin-profile-row" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(7rem, 0.55fr) minmax(8rem, 0.7fr) minmax(10rem, 0.8fr) minmax(10rem, auto)", gap: "1rem", alignItems: "center" }}>
                         <div style={{ minWidth: 0 }}>
                           <strong style={{ color: "white" }}>{profile.name}</strong>
                           <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0" }}>{profile.location || "Localização não informada"}</p>
@@ -1157,6 +1204,16 @@ export default function AdminDashboard() {
                             {endDate ? `${daysLeft} dia(s) restantes` : "Sem vencimento definido"}
                           </small>
                         </span>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.45rem" }}>
+                          <span style={{ padding: "0.55rem", borderRadius: "0.55rem", background: "rgba(10,10,10,0.34)", border: "1px solid rgba(245,230,200,0.08)" }}>
+                            <small style={{ display: "block", color: "var(--text-secondary)", fontSize: "0.7rem", fontWeight: 800 }}>Aberturas</small>
+                            <strong style={{ display: "block", marginTop: "0.15rem", color: "white" }}>{analytics.profile_views.toLocaleString("pt-BR")}</strong>
+                          </span>
+                          <span style={{ padding: "0.55rem", borderRadius: "0.55rem", background: "rgba(10,10,10,0.34)", border: "1px solid rgba(245,230,200,0.08)" }}>
+                            <small style={{ display: "block", color: "var(--text-secondary)", fontSize: "0.7rem", fontWeight: 800 }}>WhatsApp</small>
+                            <strong style={{ display: "block", marginTop: "0.15rem", color: "white" }}>{analytics.whatsapp_clicks.toLocaleString("pt-BR")}</strong>
+                          </span>
+                        </div>
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <span style={{ width: "100%", color: profile.profile_approval_status === "approved" ? "#4ade80" : "#eab308", fontWeight: "bold", textAlign: "right" }}>
                             {profile.profile_approval_status === "approved" ? "Aprovado" : "Aguardando aprovação"}

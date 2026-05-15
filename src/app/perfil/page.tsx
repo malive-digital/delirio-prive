@@ -98,6 +98,7 @@ export default function PerfilPage() {
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
 
+      void supabase.rpc("increment_profile_view", { target_profile_id: profileId });
       setProfile(profileData as PublicProfile);
       setMediaItems((mediaData || []) as ProfileMedia[]);
       setLoading(false);
@@ -137,6 +138,12 @@ export default function PerfilPage() {
 
   const showNextPhoto = () => {
     setSelectedPhotoIndex((current) => (photos.length ? (current + 1) % photos.length : 0));
+  };
+
+  const handleWhatsAppClick = () => {
+    if (!profile?.id) return;
+
+    void supabase.rpc("increment_whatsapp_click", { target_profile_id: profile.id });
   };
 
   return (
@@ -249,7 +256,7 @@ export default function PerfilPage() {
                   </div>
                 </dl>
                 {profile.whatsapp && (
-                  <a className="button button--primary favorite-button--wide" href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent("Olá! Encontrei seu contato no Delírio Privê e resolvi entrar em contato. Você está disponível para conversar?")}`} target="_blank" rel="noreferrer">
+                  <a className="button button--primary favorite-button--wide" href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent("Olá! Encontrei seu contato no Delírio Privê e resolvi entrar em contato. Você está disponível para conversar?")}`} target="_blank" rel="noreferrer" onClick={handleWhatsAppClick}>
                     Chamar no WhatsApp
                   </a>
                 )}
