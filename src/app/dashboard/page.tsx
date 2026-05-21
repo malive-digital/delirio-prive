@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
 import { getSubscriptionDaysLeft, isSubscriptionActive } from "@/lib/subscriptions";
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 15;
 const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -180,6 +180,143 @@ const predefinedOptions = {
   languages: ["Português", "Inglês", "Espanhol", "Francês", "Italiano"],
 };
 
+const scheduleDays = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+const scheduleHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+const scheduleMinutes = ["00", "15", "30", "45"];
+const appearanceOptions = {
+  ethnicity: ["Branca", "Morena", "Negra", "Parda", "Loira", "Ruiva", "Asiática", "Indígena"],
+  eyeColor: ["Castanhos", "Pretos", "Azuis", "Verdes", "Mel", "Cinza"],
+  hairColor: ["Preto", "Castanho", "Loiro", "Ruivo", "Colorido", "Grisalho", "Careca"],
+};
+
+type ScheduleRow = {
+  enabled: boolean;
+  startHour: string;
+  startMinute: string;
+  endHour: string;
+  endMinute: string;
+};
+
+type AppearanceFields = {
+  height: string;
+  weight: string;
+  ethnicity: string;
+  eyeColor: string;
+  hairColor: string;
+  smokes: string;
+  drinks: string;
+};
+
+const emptyScheduleRows = () => {
+  return scheduleDays.reduce((rows, day) => {
+    rows[day] = {
+      enabled: false,
+      startHour: "09",
+      startMinute: "00",
+      endHour: "18",
+      endMinute: "00",
+    };
+
+    return rows;
+  }, {} as Record<string, ScheduleRow>);
+};
+
+const emptyAppearanceFields: AppearanceFields = {
+  height: "",
+  weight: "",
+  ethnicity: "",
+  eyeColor: "",
+  hairColor: "",
+  smokes: "",
+  drinks: "",
+};
+
+const formatAvailabilitySchedule = (days: string[], startTime: string, endTime: string) => {
+  if (!days.length) return "";
+
+  const dayLabel = days.join(", ");
+
+  if (startTime && endTime) {
+    return `${dayLabel}: ${startTime} às ${endTime}`;
+  }
+
+  if (startTime) {
+    return `${dayLabel}: a partir das ${startTime}`;
+  }
+
+  if (endTime) {
+    return `${dayLabel}: até ${endTime}`;
+  }
+
+  return dayLabel;
+};
+
+const formatScheduleRows = (rows: Record<string, ScheduleRow>) => {
+  return scheduleDays
+    .filter((day) => rows[day]?.enabled)
+    .map((day) => {
+      const row = rows[day];
+      return `${day}: ${row.startHour}:${row.startMinute} às ${row.endHour}:${row.endMinute}`;
+    })
+    .join("\n");
+};
+
+const appearanceLabels: Record<keyof AppearanceFields, string> = {
+  height: "Altura",
+  weight: "Peso",
+  ethnicity: "Etnia",
+  eyeColor: "Cor dos olhos",
+  hairColor: "Cor do cabelo",
+  smokes: "Fuma",
+  drinks: "Bebe",
+};
+
+const parseAppearanceFields = (value: string) => {
+  const fields = { ...emptyAppearanceFields };
+
+  value.split(/\r?\n/).forEach((line) => {
+    const [rawLabel, ...rawValue] = line.split(":");
+    const label = rawLabel?.trim();
+    const fieldValue = rawValue.join(":").trim();
+    const field = (Object.keys(appearanceLabels) as Array<keyof AppearanceFields>)
+      .find((key) => appearanceLabels[key] === label);
+
+    if (field) {
+      fields[field] = fieldValue;
+    }
+  });
+
+  return fields;
+};
+
+const formatAppearanceFields = (fields: AppearanceFields) => {
+  return (Object.keys(appearanceLabels) as Array<keyof AppearanceFields>)
+    .map((field) => {
+      const value = fields[field].trim();
+      return value ? `${appearanceLabels[field]}: ${value}` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+};
+
+const formatHeightInput = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 3);
+  if (!digits) return "";
+
+  if (digits.length < 3) {
+    return digits;
+  }
+
+  const meters = digits.slice(0, -2).replace(/^0+/, "") || "0";
+  const centimeters = digits.slice(-2);
+
+  return `${meters},${centimeters}`;
+};
+
+const formatWeightInput = (value: string) => {
+  return value.replace(/\D/g, "").slice(0, 3);
+};
+
 const categoryGuides = {
   mulher: {
     title: "Padrao para mulheres",
@@ -246,6 +383,11 @@ export default function Dashboard() {
   const [subscriptionDaysLeft, setSubscriptionDaysLeft] = useState<number | null>(null);
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
+  const [selectedScheduleDays, setSelectedScheduleDays] = useState<string[]>([]);
+  const [scheduleStartTime, setScheduleStartTime] = useState("");
+  const [scheduleEndTime, setScheduleEndTime] = useState("");
+  const [scheduleRows, setScheduleRows] = useState<Record<string, ScheduleRow>>(() => emptyScheduleRows());
+  const [appearanceFields, setAppearanceFields] = useState<AppearanceFields>(emptyAppearanceFields);
 
   const currentPlan = getPlanConfig(profile.active_plan || (isTrial ? "Basico" : "Top Prive"));
   const categoryGuide = categoryGuides[profile.type as keyof typeof categoryGuides] || categoryGuides.mulher;
@@ -393,6 +535,7 @@ export default function Dashboard() {
         const loadedProfile = normalizeProfileForm(profileData as ProfileRow);
 
         setProfile(loadedProfile);
+        setAppearanceFields(parseAppearanceFields(loadedProfile.appearance));
         if (savedPlan && !storedPlan) {
           planStorage.setItem("hasActivePlan", savedPlan);
         }
@@ -463,6 +606,55 @@ export default function Dashboard() {
 
   const hasListValue = (field: keyof Pick<ProfileForm, "serves" | "availability" | "payment_methods" | "services" | "specialties" | "languages">, value: string) => {
     return profile[field].split(",").map((item) => item.trim()).includes(value);
+  };
+
+  const applyAvailabilitySchedule = (days = selectedScheduleDays, startTime = scheduleStartTime, endTime = scheduleEndTime) => {
+    updateProfileField("availability", formatAvailabilitySchedule(days, startTime, endTime));
+  };
+
+  const toggleScheduleDay = (day: string) => {
+    setSelectedScheduleDays((current) => {
+      const nextDays = current.includes(day) ? current.filter((item) => item !== day) : [...current, day];
+      applyAvailabilitySchedule(nextDays, scheduleStartTime, scheduleEndTime);
+      return nextDays;
+    });
+  };
+
+  const handleScheduleStartChange = (value: string) => {
+    setScheduleStartTime(value);
+    applyAvailabilitySchedule(selectedScheduleDays, value, scheduleEndTime);
+  };
+
+  const handleScheduleEndChange = (value: string) => {
+    setScheduleEndTime(value);
+    applyAvailabilitySchedule(selectedScheduleDays, scheduleStartTime, value);
+  };
+
+  const updateScheduleRow = (day: string, updates: Partial<ScheduleRow>) => {
+    setScheduleRows((current) => {
+      const nextRows = {
+        ...current,
+        [day]: {
+          ...current[day],
+          ...updates,
+        },
+      };
+
+      updateProfileField("availability", formatScheduleRows(nextRows));
+      return nextRows;
+    });
+  };
+
+  const updateAppearanceField = (field: keyof AppearanceFields, value: string) => {
+    setAppearanceFields((current) => {
+      const nextFields = {
+        ...current,
+        [field]: value,
+      };
+
+      updateProfileField("appearance", formatAppearanceFields(nextFields));
+      return nextFields;
+    });
   };
 
   const handleOnlineToggle = async () => {
@@ -1175,8 +1367,8 @@ export default function Dashboard() {
                       </label>
                       <label className="input-group">
                         <span>Atendimento</span>
-                        <input value={profile.serves} onChange={(event) => updateProfileField("serves", event.target.value)} type="text" placeholder={categoryGuide.serves} />
-                        <div className="quick-options">
+                        <p className="selection-summary">{profile.serves || "Selecione uma ou mais opções"}</p>
+                        <div className="quick-options quick-options--selectable">
                           {predefinedOptions.serves.map((option) => (
                             <button
                               key={option}
@@ -1197,9 +1389,52 @@ export default function Dashboard() {
                     <div className="dashboard-form-grid">
                       <label className="input-group input-group--wide">
                         <span>Horários de atendimento</span>
-                        <textarea value={profile.availability} onChange={(event) => updateProfileField("availability", event.target.value)} rows={3} placeholder="Ex: Segunda a sabado, das 10h as 22h" />
+                        <div className="schedule-builder">
+                          <div className="schedule-day-list" aria-label="Dias e horários de atendimento">
+                            {scheduleDays.map((day) => (
+                              <div className="schedule-day-row" key={day}>
+                                <label className="schedule-day-toggle">
+                                  <input
+                                    type="checkbox"
+                                    checked={scheduleRows[day]?.enabled || false}
+                                    onChange={(event) => updateScheduleRow(day, { enabled: event.target.checked })}
+                                  />
+                                  <span>{day}</span>
+                                </label>
+                                <div className="schedule-selects">
+                                  <select
+                                    value={scheduleRows[day]?.startHour || "09"}
+                                    onChange={(event) => updateScheduleRow(day, { startHour: event.target.value, enabled: true })}
+                                  >
+                                    {scheduleHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                                  </select>
+                                  <select
+                                    value={scheduleRows[day]?.startMinute || "00"}
+                                    onChange={(event) => updateScheduleRow(day, { startMinute: event.target.value, enabled: true })}
+                                  >
+                                    {scheduleMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
+                                  </select>
+                                  <span>até</span>
+                                  <select
+                                    value={scheduleRows[day]?.endHour || "18"}
+                                    onChange={(event) => updateScheduleRow(day, { endHour: event.target.value, enabled: true })}
+                                  >
+                                    {scheduleHours.map((hour) => <option key={hour} value={hour}>{hour}</option>)}
+                                  </select>
+                                  <select
+                                    value={scheduleRows[day]?.endMinute || "00"}
+                                    onChange={(event) => updateScheduleRow(day, { endMinute: event.target.value, enabled: true })}
+                                  >
+                                    {scheduleMinutes.map((minute) => <option key={minute} value={minute}>{minute}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <textarea value={profile.availability} onChange={(event) => updateProfileField("availability", event.target.value)} rows={3} placeholder="Ex: Segunda a sexta: 10:00 às 22:00" />
                         <div className="quick-options">
-                          {predefinedOptions.availability.map((option) => (
+                          {["Manha", "Tarde", "Noite", "Madrugada", "24 horas", "Com hora marcada"].map((option) => (
                             <button
                               key={option}
                               type="button"
@@ -1269,9 +1504,64 @@ export default function Dashboard() {
                   <fieldset className="dashboard-fieldset">
                     <legend>Aparencia e idiomas</legend>
                     <div className="dashboard-form-grid">
-                      <label className="input-group input-group--wide">
-                        <span>Caracteristicas fisicas</span>
-                        <textarea value={profile.appearance} onChange={(event) => updateProfileField("appearance", event.target.value)} rows={3} placeholder="Ex: altura, cabelo, olhos, corpo, tatuagens" />
+                      <label className="input-group">
+                        <span>Altura</span>
+                        <input
+                          value={appearanceFields.height}
+                          onChange={(event) => updateAppearanceField("height", formatHeightInput(event.target.value))}
+                          inputMode="numeric"
+                          type="text"
+                          placeholder="Ex: 1,70"
+                        />
+                      </label>
+                      <label className="input-group">
+                        <span>Peso</span>
+                        <input
+                          value={appearanceFields.weight}
+                          onChange={(event) => updateAppearanceField("weight", formatWeightInput(event.target.value))}
+                          inputMode="numeric"
+                          type="text"
+                          placeholder="Ex: 60"
+                        />
+                      </label>
+                      <label className="input-group">
+                        <span>Etnia</span>
+                        <select value={appearanceFields.ethnicity} onChange={(event) => updateAppearanceField("ethnicity", event.target.value)}>
+                          <option value="">Não informado</option>
+                          {appearanceOptions.ethnicity.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </label>
+                      <label className="input-group">
+                        <span>Cor dos olhos</span>
+                        <select value={appearanceFields.eyeColor} onChange={(event) => updateAppearanceField("eyeColor", event.target.value)}>
+                          <option value="">Não informado</option>
+                          {appearanceOptions.eyeColor.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </label>
+                      <label className="input-group">
+                        <span>Cor do cabelo</span>
+                        <select value={appearanceFields.hairColor} onChange={(event) => updateAppearanceField("hairColor", event.target.value)}>
+                          <option value="">Não informado</option>
+                          {appearanceOptions.hairColor.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </label>
+                      <label className="input-group">
+                        <span>Fuma</span>
+                        <select value={appearanceFields.smokes} onChange={(event) => updateAppearanceField("smokes", event.target.value)}>
+                          <option value="">Não informado</option>
+                          <option value="Sim">Sim</option>
+                          <option value="Não">Não</option>
+                          <option value="Socialmente">Socialmente</option>
+                        </select>
+                      </label>
+                      <label className="input-group">
+                        <span>Bebe</span>
+                        <select value={appearanceFields.drinks} onChange={(event) => updateAppearanceField("drinks", event.target.value)}>
+                          <option value="">Não informado</option>
+                          <option value="Sim">Sim</option>
+                          <option value="Não">Não</option>
+                          <option value="Socialmente">Socialmente</option>
+                        </select>
                       </label>
                       <label className="input-group input-group--wide">
                         <span>Idiomas</span>

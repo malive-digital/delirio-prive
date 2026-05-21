@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://delirioprive.com.br";
+const siteUrl = "https://www.delirioprive.com.br";
 
 export default function robots(): MetadataRoute.Robots {
   return {

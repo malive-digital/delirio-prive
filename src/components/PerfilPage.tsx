@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
@@ -62,12 +63,20 @@ const placeLabels: Record<string, string> = {
 
 const formatList = (value: string | null) => value?.split(",").map((item) => item.trim()).filter(Boolean) || [];
 
+const formatDisplayLines = (value: string | null) => {
+  return (value || "")
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 type PerfilPageProps = {
   citySlug?: string;
   profileSlug?: string;
 };
 
 export default function PerfilPage({ citySlug = "", profileSlug: routeProfileSlug = "" }: PerfilPageProps) {
+  const router = useRouter();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [mediaItems, setMediaItems] = useState<ProfileMedia[]>([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
@@ -148,6 +157,8 @@ export default function PerfilPage({ citySlug = "", profileSlug: routeProfileSlu
   const selectedPhoto = photos[safeSelectedPhotoIndex] || "";
   const selectedPhotoAlt = `${profile?.name || "Perfil"} - foto ${safeSelectedPhotoIndex + 1}`;
   const backHref = catalogHrefByType[profile?.type || ""] || "/mulheres";
+  const availabilityLines = formatDisplayLines(profile?.availability || null);
+  const appearanceLines = formatDisplayLines(profile?.appearance || null);
 
   const showPreviousPhoto = () => {
     setSelectedPhotoIndex((current) => (photos.length ? (current - 1 + photos.length) % photos.length : 0));
@@ -161,6 +172,15 @@ export default function PerfilPage({ citySlug = "", profileSlug: routeProfileSlu
     if (!profile?.id) return;
 
     void supabase.rpc("increment_whatsapp_click", { target_profile_id: profile.id });
+  };
+
+  const handleCloseProfile = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(backHref);
   };
 
   return (
@@ -192,6 +212,13 @@ export default function PerfilPage({ citySlug = "", profileSlug: routeProfileSlu
           </section>
         ) : (
           <>
+            <div className="profile-top-actions profile-wide-section">
+              <button className="profile-close-button" type="button" onClick={handleCloseProfile} aria-label="Fechar perfil e voltar">
+                <span aria-hidden="true">x</span>
+                Fechar perfil
+              </button>
+            </div>
+
             <section className="profile-media-column">
               <div className="profile-card-shell media-gallery">
                 <div className="gallery-stage">
@@ -311,10 +338,31 @@ export default function PerfilPage({ citySlug = "", profileSlug: routeProfileSlu
               </article>
 
               <article className="profile-card-shell">
+                <span className="section-kicker">Aparência</span>
+                <h2>Características</h2>
+                <dl className="detail-grid">
+                  {appearanceLines.length ? appearanceLines.map((line) => {
+                    const [label, ...valueParts] = line.split(":");
+                    return (
+                      <div key={line}>
+                        <dt>{label}</dt>
+                        <dd>{valueParts.join(":").trim() || "Não informado"}</dd>
+                      </div>
+                    );
+                  }) : <div><dt>Informações</dt><dd>Não informado</dd></div>}
+                </dl>
+              </article>
+
+              <article className="profile-card-shell">
                 <span className="section-kicker">Disponibilidade</span>
                 <h2>Combinados</h2>
                 <dl className="detail-grid">
-                  <div><dt>Horários</dt><dd>{profile.availability || "Não informado"}</dd></div>
+                  <div>
+                    <dt>Horários</dt>
+                    <dd>
+                      {availabilityLines.length ? availabilityLines.map((line) => <span className="detail-line" key={line}>{line}</span>) : "Não informado"}
+                    </dd>
+                  </div>
                   <div><dt>Pagamento</dt><dd>{profile.payment_methods || "Não informado"}</dd></div>
                   <div><dt>Restrições</dt><dd>{profile.restrictions || "Não informado"}</dd></div>
                 </dl>

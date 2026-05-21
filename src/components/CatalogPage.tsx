@@ -252,7 +252,7 @@ export function CatalogPage({ title, type, activeHref, initialCitySlug = "" }: C
 
   const handleCityChange = (citySlug: string) => {
     setSelectedCitySlug(citySlug);
-    router.push(citySlug ? `/${citySlug}` : activeHref);
+    router.push(citySlug ? `${activeHref}/${citySlug}` : activeHref);
   };
 
   const activeFilterCount = [selectedUf, selectedCitySlug, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
@@ -365,7 +365,7 @@ export function CatalogPage({ title, type, activeHref, initialCitySlug = "" }: C
         <div className="promo-banner" style={{ background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(75, 15, 26, 0.2))', border: '1px solid rgba(212, 175, 55, 0.3)', padding: '1rem 1.5rem', borderRadius: '1rem', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--champagne)' }}>Anuncie no Delírio Privê!</h3>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Novas anunciantes ganham <strong>7 dias grátis</strong> para testar o plano Básico.</p>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Novas anunciantes ganham <strong>15 dias grátis</strong> para testar o plano Básico.</p>
           </div>
           <Link href="/cadastro-whatsapp" className="button button--primary" style={{ minHeight: '2.5rem', padding: '0.5rem 1.2rem', fontSize: '0.9rem' }}>
             Falar com Consultores

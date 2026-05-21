@@ -60,7 +60,7 @@ export default function Planos() {
         </div>
 
         <div className="plan-trial-notice" role="note">
-          <strong>7 dias grátis ao cadastrar.</strong>
+          <strong>15 dias grátis ao cadastrar.</strong>
           <span>Após o período gratuito, você pode escolher o plano ideal para manter seu perfil em destaque.</span>
         </div>
 

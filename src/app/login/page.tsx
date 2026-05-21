@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isSubscriptionActive } from "@/lib/subscriptions";
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 15;
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "admin@delirioprive.com")
   .split(",")
   .map((email) => email.trim().toLowerCase())

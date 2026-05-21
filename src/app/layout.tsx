@@ -5,7 +5,7 @@ import Script from "next/script";
 import { AgeGate } from "@/components/AgeGate";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://delirioprive.com.br"),
+  metadataBase: new URL("https://www.delirioprive.com.br"),
   title: {
     default: "Delírio Privê | Acompanhantes de Luxo",
     template: "%s | Delírio Privê",

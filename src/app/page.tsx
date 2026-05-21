@@ -8,6 +8,7 @@ import { AuthNavLink } from "@/components/AuthNavLink";
 export default function Home() {
   const router = useRouter();
   const [showInterestModal, setShowInterestModal] = useState(false);
+  const [isResolvingEntry, setIsResolvingEntry] = useState(true);
 
   useEffect(() => {
     const continueHomeFlow = () => {
@@ -15,14 +16,18 @@ export default function Home() {
 
       if (userPreference) {
         // Se já tem preferência salva, redireciona direto
+        setIsResolvingEntry(true);
         router.push(userPreference);
       } else {
+        setIsResolvingEntry(false);
         setShowInterestModal(true);
       }
     };
 
     if (sessionStorage.getItem("ageConfirmed")) {
       continueHomeFlow();
+    } else {
+      setIsResolvingEntry(false);
     }
 
     window.addEventListener("delirio:age-confirmed", continueHomeFlow);
@@ -75,7 +80,7 @@ export default function Home() {
       </header>
 
       <main className="entry-shell" style={{ position: "relative", zIndex: 1, minHeight: "calc(100vh - 4.8rem)" }}>
-        <section className="home-seo" aria-labelledby="home-title">
+        {!isResolvingEntry && <section className="home-seo" aria-labelledby="home-title">
           <p className="eyebrow">Plataforma exclusiva</p>
           <h1 id="home-title">Delírio Privê | Acompanhantes de Luxo</h1>
           <p>
@@ -87,7 +92,7 @@ export default function Home() {
             <Link className="button button--ghost" href="/homens">Homens</Link>
             <Link className="button button--ghost" href="/travestis">Trans</Link>
           </div>
-        </section>
+        </section>}
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CATALOG_CATEGORIES, getCatalogCategoryCityHref } from "@/lib/catalog-categories";
 import { getCanonicalProfilePath, getCitySlug, getPublishedProfilesForSeo, siteUrl } from "@/lib/profile-seo";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.85,
     }));
+  const categoryCityRoutes = CATALOG_CATEGORIES.flatMap((category) => {
+    return Array.from(indexableProfiles
+      .filter((profile) => profile.type === category.type)
+      .reduce((cities, profile) => {
+        const city = getCitySlug(profile);
+        const current = cities.get(city);
+        const currentTime = current?.updated_at ? new Date(current.updated_at).getTime() : 0;
+        const profileTime = profile.updated_at ? new Date(profile.updated_at).getTime() : 0;
+
+        if (!current || profileTime > currentTime) {
+          cities.set(city, profile);
+        }
+
+        return cities;
+      }, new Map<string, (typeof indexableProfiles)[number]>()).entries())
+      .map(([city, profile]) => ({
+        url: `${siteUrl}${getCatalogCategoryCityHref(category, city)}`,
+        lastModified: profile.updated_at ? new Date(profile.updated_at) : lastModified,
+        changeFrequency: "daily" as const,
+        priority: 0.86,
+      }));
+  });
   const profileRoutes = indexableProfiles.map((profile) => ({
     url: `${siteUrl}${getCanonicalProfilePath(profile, indexableProfiles)}`,
     lastModified: profile.updated_at ? new Date(profile.updated_at) : lastModified,
@@ -65,5 +88,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...routes, ...cityRoutes, ...profileRoutes];
+  return [...routes, ...cityRoutes, ...categoryCityRoutes, ...profileRoutes];
 }

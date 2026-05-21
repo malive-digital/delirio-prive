@@ -28,7 +28,7 @@ const createSeoSupabase = () => createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export const siteUrl = "https://delirioprive.com.br";
+export const siteUrl = "https://www.delirioprive.com.br";
 
 export const getPublishedProfilesForSeo = async () => {
   if (!supabaseUrl || !supabaseAnonKey) {

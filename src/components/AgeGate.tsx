@@ -6,16 +6,15 @@ import { usePathname } from "next/navigation";
 
 export function AgeGate() {
   const pathname = usePathname();
-  const [showAgeGate, setShowAgeGate] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(() => {
+    if (typeof window === "undefined") return true;
+
+    return !sessionStorage.getItem("ageConfirmed");
+  });
   const [isHidingAgeGate, setIsHidingAgeGate] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem("ageConfirmed")) {
-      setShowAgeGate(false);
-      return;
-    };
-
-    setShowAgeGate(true);
+    setShowAgeGate(!sessionStorage.getItem("ageConfirmed"));
   }, [pathname]);
 
   const handleAgeConfirm = () => {
