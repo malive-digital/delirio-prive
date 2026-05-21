@@ -19,21 +19,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [
-          {
-            type: "host",
-            value: "www.delirioprive.com.br",
-          },
-        ],
-        destination: "https://delirioprive.com.br/:path*",
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
