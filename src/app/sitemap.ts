@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getCanonicalProfilePath, getCitySlug, getPublishedProfilesForSeo, siteUrl } from "@/lib/profile-seo";
 
-const siteUrl = "https://delirioprive.com.br";
+export const dynamic = "force-dynamic";
 
 const routes: MetadataRoute.Sitemap = [
   {
@@ -33,28 +34,36 @@ const routes: MetadataRoute.Sitemap = [
     changeFrequency: "weekly",
     priority: 0.6,
   },
-  {
-    url: `${siteUrl}/termos-de-uso`,
-    changeFrequency: "yearly",
-    priority: 0.3,
-  },
-  {
-    url: `${siteUrl}/politica-de-privacidade`,
-    changeFrequency: "yearly",
-    priority: 0.3,
-  },
-  {
-    url: `${siteUrl}/cadastro-whatsapp`,
-    changeFrequency: "monthly",
-    priority: 0.5,
-  },
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
+  const profiles = await getPublishedProfilesForSeo();
+  const indexableProfiles = profiles.filter((profile) => getCitySlug(profile) !== "cidade");
+  const cityRoutes = Array.from(indexableProfiles.reduce((cities, profile) => {
+    const city = getCitySlug(profile);
+    const current = cities.get(city);
+    const currentTime = current?.updated_at ? new Date(current.updated_at).getTime() : 0;
+    const profileTime = profile.updated_at ? new Date(profile.updated_at).getTime() : 0;
 
-  return routes.map((route) => ({
-    ...route,
-    lastModified,
+    if (!current || profileTime > currentTime) {
+      cities.set(city, profile);
+    }
+
+    return cities;
+  }, new Map<string, (typeof indexableProfiles)[number]>()).entries())
+    .map(([city, profile]) => ({
+      url: `${siteUrl}/${city}`,
+      lastModified: profile.updated_at ? new Date(profile.updated_at) : lastModified,
+      changeFrequency: "daily" as const,
+      priority: 0.85,
+    }));
+  const profileRoutes = indexableProfiles.map((profile) => ({
+    url: `${siteUrl}${getCanonicalProfilePath(profile, indexableProfiles)}`,
+    lastModified: profile.updated_at ? new Date(profile.updated_at) : lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
   }));
+
+  return [...routes, ...cityRoutes, ...profileRoutes];
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getPlanConfig } from "@/lib/plans";
+import { buildProfileCitySlug, buildProfilePath } from "@/lib/profile-slug";
 import { AuthNavLink } from "@/components/AuthNavLink";
 
 type CatalogProfile = {
@@ -19,6 +21,8 @@ type CatalogProfile = {
   payment_methods: string | null;
   is_online: boolean | null;
   profile_verified: boolean | null;
+  created_at: string | null;
+  is_recent?: boolean;
   media_url?: string;
 };
 
@@ -31,8 +35,9 @@ type ProfileMediaRow = {
 
 type CatalogPageProps = {
   title: string;
-  type: string;
+  type?: string;
   activeHref: string;
+  initialCitySlug?: string;
 };
 
 const BRAZIL_UFS = [
@@ -73,15 +78,23 @@ const CATALOG_PLAN_SECTIONS = [
   { key: "Premium", title: "Premium", gridClass: "profile-grid--catalog-premium" },
   { key: "Basico", title: "Básico", gridClass: "profile-grid--catalog-basic" },
 ] as const;
+const NEW_PROFILE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const detectUfFromCoords = (latitude: number, longitude: number) => {
   return UF_BOXES.find((box) => latitude >= box.minLat && latitude <= box.maxLat && longitude >= box.minLng && longitude <= box.maxLng)?.uf || "";
 };
 
-export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
+export function CatalogPage({ title, type, activeHref, initialCitySlug = "" }: CatalogPageProps) {
+  const router = useRouter();
+  const recentProfilesScrollerRef = useRef<HTMLDivElement | null>(null);
   const [profiles, setProfiles] = useState<CatalogProfile[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedUf, setSelectedUf] = useState("");
+  const [selectedUf, setSelectedUf] = useState(() => {
+    if (typeof window === "undefined") return "";
+
+    return localStorage.getItem("delirioPreferredUf") || "";
+  });
+  const [selectedCitySlug, setSelectedCitySlug] = useState(initialCitySlug);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedServes, setSelectedServes] = useState("");
   const [selectedPlace, setSelectedPlace] = useState("");
@@ -92,18 +105,28 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
 
   useEffect(() => {
     const loadProfiles = async () => {
-      let { data, error } = await supabase
+      let profileQuery = supabase
         .from("published_profiles")
-        .select("id,type,name,location,state_uf,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified")
-        .eq("type", type)
+        .select("id,type,name,location,state_uf,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified,created_at")
         .order("updated_at", { ascending: false });
 
+      if (type) {
+        profileQuery = profileQuery.eq("type", type);
+      }
+
+      let { data, error } = await profileQuery;
+
       if (error) {
-        const fallback = await supabase
+        let fallbackQuery = supabase
           .from("published_profiles")
-          .select("id,type,name,location,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified")
-          .eq("type", type)
+          .select("id,type,name,location,description,active_plan,serves,has_place,payment_methods,is_online,profile_verified,created_at")
           .order("updated_at", { ascending: false });
+
+        if (type) {
+          fallbackQuery = fallbackQuery.eq("type", type);
+        }
+
+        const fallback = await fallbackQuery;
 
         data = (fallback.data || []).map((profile) => ({ ...profile, state_uf: null }));
         error = fallback.error;
@@ -143,23 +166,40 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
         }, new Map<string, string>());
       }
 
-      setProfiles(approvedProfiles.map((profile) => ({ ...profile, media_url: mediaByProfile.get(profile.id) || "" })));
+      const now = Date.now();
+      setProfiles(approvedProfiles.map((profile) => {
+        const createdAt = profile.created_at ? new Date(profile.created_at).getTime() : 0;
+
+        return {
+          ...profile,
+          is_recent: Number.isFinite(createdAt) && now - createdAt <= NEW_PROFILE_WINDOW_MS,
+          media_url: mediaByProfile.get(profile.id) || "",
+        };
+      }));
       setLoading(false);
     };
 
     loadProfiles();
   }, [type]);
 
-  useEffect(() => {
-    const savedUf = localStorage.getItem("delirioPreferredUf");
-    if (savedUf) {
-      setSelectedUf(savedUf);
-    }
-  }, []);
-
   const availableUfs = useMemo(() => {
     const ufs = new Set(profiles.map((profile) => profile.state_uf).filter((uf): uf is string => BRAZIL_UFS.includes(uf || "")));
     return BRAZIL_UFS.filter((uf) => ufs.has(uf));
+  }, [profiles]);
+
+  const availableCities = useMemo(() => {
+    const cities = new Map<string, string>();
+
+    profiles.forEach((profile) => {
+      if (!profile.location) return;
+
+      const citySlug = buildProfileCitySlug(profile);
+      if (citySlug && citySlug !== "cidade" && !cities.has(citySlug)) {
+        cities.set(citySlug, profile.location);
+      }
+    });
+
+    return Array.from(cities, ([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [profiles]);
 
   useEffect(() => {
@@ -174,6 +214,7 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
     return profiles
       .filter((profile) => {
         const matchesUf = !selectedUf || profile.state_uf === selectedUf;
+        const matchesCity = !selectedCitySlug || buildProfileCitySlug(profile) === selectedCitySlug;
         const matchesStatus = !selectedStatus || (selectedStatus === "online" ? profile.is_online : profile.profile_verified);
         const matchesServes = !selectedServes || (profile.serves || "").toLowerCase().includes(selectedServes.toLowerCase());
         const matchesPlace = !selectedPlace || profile.has_place === selectedPlace;
@@ -184,16 +225,22 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
           .toLowerCase()
           .includes(normalizedSearch);
 
-        return matchesUf && matchesStatus && matchesServes && matchesPlace && matchesPayment && matchesSearch;
+        return matchesUf && matchesCity && matchesStatus && matchesServes && matchesPlace && matchesPayment && matchesSearch;
       })
       .sort((a, b) => {
         const planA = getPlanConfig(a.active_plan || "Basico").key;
         const planB = getPlanConfig(b.active_plan || "Basico").key;
         return PLAN_ORDER[planA] - PLAN_ORDER[planB];
       });
-  }, [profiles, search, selectedUf, selectedStatus, selectedServes, selectedPlace, selectedPayment]);
+  }, [profiles, search, selectedUf, selectedCitySlug, selectedStatus, selectedServes, selectedPlace, selectedPayment]);
 
-  const handleUfChange = (uf: string) => {
+  const recentProfiles = useMemo(() => {
+    return visibleProfiles
+      .filter((profile) => profile.is_recent)
+      .sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime());
+  }, [visibleProfiles]);
+
+  function handleUfChange(uf: string) {
     setSelectedUf(uf);
     if (uf) {
       localStorage.setItem("delirioPreferredUf", uf);
@@ -201,17 +248,26 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
     }
 
     localStorage.removeItem("delirioPreferredUf");
+  }
+
+  const handleCityChange = (citySlug: string) => {
+    setSelectedCitySlug(citySlug);
+    router.push(citySlug ? `/${citySlug}` : activeHref);
   };
 
-  const activeFilterCount = [selectedUf, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
+  const activeFilterCount = [selectedUf, selectedCitySlug, selectedStatus, selectedServes, selectedPlace, selectedPayment].filter(Boolean).length;
 
   const clearFilters = () => {
     setSelectedStatus("");
     setSelectedServes("");
     setSelectedPlace("");
     setSelectedPayment("");
+    setSelectedCitySlug("");
     handleUfChange("");
     setRegionMessage("");
+    if (initialCitySlug) {
+      router.push(activeHref);
+    }
   };
 
   const detectRegion = () => {
@@ -237,17 +293,29 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
     );
   };
 
-  const renderProfileCard = (profile: CatalogProfile) => {
+  const scrollRecentProfiles = (direction: "previous" | "next") => {
+    const scroller = recentProfilesScrollerRef.current;
+    if (!scroller) return;
+
+    scroller.scrollBy({
+      left: direction === "next" ? scroller.clientWidth * 0.9 : scroller.clientWidth * -0.9,
+      behavior: "smooth",
+    });
+  };
+
+  const renderProfileCard = (profile: CatalogProfile, forceBasicSize = false) => {
     const plan = getPlanConfig(profile.active_plan || "Basico");
     const planSizeClass =
-      plan.key === "Top Prive"
+      forceBasicSize
+        ? "profile-card--catalog-basic"
+        : plan.key === "Top Prive"
         ? "profile-card--catalog-top"
         : plan.key === "Premium"
           ? "profile-card--catalog-premium"
           : "profile-card--catalog-basic";
 
     return (
-      <Link className={`profile-card profile-card--link ${planSizeClass}`} href={`/perfil?id=${profile.id}`} key={profile.id}>
+      <Link className={`profile-card profile-card--link ${planSizeClass}`} href={buildProfilePath(profile, profiles)} key={profile.id}>
         <div
           className="profile-card__media profile-card__media--one"
           style={profile.media_url ? { backgroundImage: `linear-gradient(180deg, transparent, rgba(10, 10, 10, 0.82)), url("${profile.media_url}")` } : undefined}
@@ -343,6 +411,15 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
                     </select>
                   </label>
                   <label>
+                    <span>Cidade</span>
+                    <select value={selectedCitySlug} onChange={(event) => handleCityChange(event.target.value)}>
+                      <option value="">Todas</option>
+                      {availableCities.map((city) => (
+                        <option key={city.slug} value={city.slug}>{city.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
                     <span>Status</span>
                     <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
                       <option value="">Todos</option>
@@ -396,6 +473,25 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
               </section>
             ) : (
               <div className="catalog-plan-stack" aria-label={`Perfis de ${title}`}>
+                {recentProfiles.length > 0 && (
+                  <section className="catalog-plan-section catalog-plan-section--news" aria-labelledby="catalog-news">
+                    <div className="catalog-plan-section__header">
+                      <div>
+                        <p className="eyebrow">Novidades</p>
+                        <h2 id="catalog-news">Entraram nos ultimos 7 dias</h2>
+                      </div>
+                      <span>{recentProfiles.length} perfil(is)</span>
+                    </div>
+                    <div className="catalog-news-carousel">
+                      <button className="gallery-nav gallery-nav--prev catalog-news-carousel__nav" type="button" onClick={() => scrollRecentProfiles("previous")} aria-label="Ver novidades anteriores" />
+                      <div className="profile-grid profile-grid--catalog-basic catalog-news-carousel__track" ref={recentProfilesScrollerRef}>
+                        {recentProfiles.map((profile) => renderProfileCard(profile, true))}
+                      </div>
+                      <button className="gallery-nav gallery-nav--next catalog-news-carousel__nav" type="button" onClick={() => scrollRecentProfiles("next")} aria-label="Ver próximas novidades" />
+                    </div>
+                  </section>
+                )}
+
                 {CATALOG_PLAN_SECTIONS.map((section) => {
                   const sectionProfiles = visibleProfiles.filter((profile) => getPlanConfig(profile.active_plan || "Basico").key === section.key);
                   if (!sectionProfiles.length) return null;
@@ -409,7 +505,7 @@ export function CatalogPage({ title, type, activeHref }: CatalogPageProps) {
                         <span>{sectionProfiles.length} perfil(is)</span>
                       </div>
                       <div className={`profile-grid ${section.gridClass}`}>
-                        {sectionProfiles.map(renderProfileCard)}
+                        {sectionProfiles.map((profile) => renderProfileCard(profile))}
                       </div>
                     </section>
                   );
